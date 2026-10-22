@@ -43,7 +43,7 @@ def analyze_session(events: list[dict], cfg: dict) -> dict:
     reading = pages[starts[-1]:]
     t_end = next(e["t"] for e in reversed(ends))
     t_start = reading[0]["t_on"]
-    calib = [e for e in events if e["type"] == "calib_result" and e.get("ok")]
+    calib = [e for e in events if e["type"] == "calib_result" and e.get("ok") and e.get("primary", True)]
     calib = [e for e in calib if e.get("t", -np.inf) <= t_start] or calib
     if not calib:
         raise ValueError("no successful calibration in this log")

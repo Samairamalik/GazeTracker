@@ -47,3 +47,11 @@ analysis:
   merge_gap_s: 0.075
   hard_tol_lines: 1.0  # hard mode: nearest line only if its centre is within this many line pitches
   max_sample_dt_s: 0.1 # samples mode: cap on time credited to one sample
+gaze:
+  backend: landmark    # primary (cursor): landmark (Method A) or l2cs (Method B); override: make app BACKEND=l2cs
+  compare: false       # run both backends and calibrate A, B, B+pose on the same dots; override: make app COMPARE=1
+l2cs:
+  weights: models/l2cs_gaze360_resnet50.safetensors   # official Gaze360 weights via Py-Feat (see CITATIONS.md); not MPIIGaze (trained on the M5 test people)
+  features: gaze       # gaze (yaw, pitch) = "B" or gaze_pose (+ MediaPipe head yaw, pitch) = "B+pose", when l2cs is primary
+  crop_scale: 1.2      # square face box = 1.2 x landmark extent; fixed before any measurement
+  device: auto         # auto = mps if available, else cpu

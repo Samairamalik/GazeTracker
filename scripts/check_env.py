@@ -43,6 +43,26 @@ def main() -> int:
             print(f"model       FAILED to load: {e}")
             ok = False
 
+    l2cs_weights = ROOT / cfg["l2cs"]["weights"]
+    if not l2cs_weights.exists():
+        print(f"l2cs        weights not downloaded ({l2cs_weights.name}); only needed for BACKEND=l2cs / COMPARE=1")
+    else:
+        try:
+            import time
+            from gazeread.gaze.backend_l2cs import L2CSBackend
+            be = L2CSBackend(str(l2cs_weights), cfg["l2cs"]["crop_scale"], cfg["l2cs"]["device"])
+            frame = np.zeros((480, 640, 3), np.uint8)
+            box_lms = np.array([[200.0, 120.0], [440.0, 400.0]])
+            be.gaze_angles(frame, box_lms)                     # warm-up
+            t0 = time.perf_counter()
+            for _ in range(10):
+                be.gaze_angles(frame, box_lms)
+            ms = (time.perf_counter() - t0) / 10 * 1000
+            print(f"l2cs        loads (safe loader, strict keys) on {be.device}; {ms:.1f} ms per face")
+        except RuntimeError as e:
+            print(f"l2cs        FAILED: {e}")
+            ok = False
+
     cap = cv2.VideoCapture(cfg["camera"]["index"], cv2.CAP_AVFOUNDATION)
     got_frame, frame = cap.read() if cap.isOpened() else (False, None)
     cap.release()

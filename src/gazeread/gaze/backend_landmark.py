@@ -69,10 +69,17 @@ class LandmarkBackend:
         self._det = LandmarkDetector(model_path, num_faces)
         self._limits = (eye_open_min, max_yaw_deg, max_pitch_deg)
 
+    def detect(self, frame_bgr: np.ndarray, t: float) -> Detection | None:
+        """MediaPipe pass, shared with Method B. `t` is the capture time in seconds (monotonic)."""
+        return self._det.detect(frame_bgr, t)
+
+    def from_detection(self, det: Detection | None, t: float) -> FrameFeatures:
+        vec, valid = features_from_detection(det, *self._limits)
+        return FrameFeatures(t=t, valid=valid, vec=vec)
+
     def process(self, frame_bgr: np.ndarray, t: float) -> FrameFeatures:
         """`t` is the capture time in seconds (monotonic)."""
-        vec, valid = features_from_detection(self._det.detect(frame_bgr, t), *self._limits)
-        return FrameFeatures(t=t, valid=valid, vec=vec)
+        return self.from_detection(self.detect(frame_bgr, t), t)
 
     def close(self) -> None:
         self._det.close()

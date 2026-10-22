@@ -55,7 +55,9 @@ function renderHud(status) {
     const model = calib.degree === 1 ? "affine" : "poly2";
     s += `σ ${fmt(calib.sigma_px)} px  (x ${fmt(calib.rms_x)}, y ${fmt(calib.rms_y)})\n`;
     s += `${model} α=${Number(calib.alpha).toPrecision(2)}  LOO ${fmt(calib.loo_rms_px)} px\n`;
-    s += `${calib.n_points} dots (${calib.n_fit_dots} used)  features ${calib.features}\n`;
+    s += `${calib.n_points} dots (${calib.n_fit_dots} used)  ${calib.variant} · features ${calib.features}\n`;
+    for (const c of calib.compare || [])
+      s += `  ${c.variant.padEnd(6)} σ ${fmt(c.sigma_px)} px (x ${fmt(c.rms_x)}, y ${fmt(c.rms_y)})  LOO ${fmt(c.loo_rms_px)}\n`;
   }
   s += `${fmt(stats.fps, 1)} fps  pipeline ${fmt(stats.latency_ms, 1)} ms\n`;
   s += "C recalibrate · H hide";

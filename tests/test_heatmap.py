@@ -73,3 +73,12 @@ def test_export_writes_json_and_pngs(tmp_path):
     assert [p.name for p in paths] == ["heatmap.json", "heatmap_p1.png", "scanpath_p1.png",
                                        "heatmap_p2.png", "scanpath_p2.png"]
     assert all(p.stat().st_size > 1000 for p in paths[1:])
+
+
+def test_analysis_uses_primary_calibration(tmp_path):
+    ev = make_log(tmp_path)
+    i = next(k for k, e in enumerate(ev) if e["type"] == "calib_result")
+    ev[i]["primary"] = True
+    other = dict(ev[i], primary=False, rms_y=500.0, variant="B")
+    r = analyze_session(ev[:i + 1] + [other] + ev[i + 1:], CFG)
+    assert r["rms_y"] == 20.0 and r["granularity"] == "line"

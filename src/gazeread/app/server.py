@@ -7,6 +7,12 @@ time.monotonic(), so no browser/Python clock sync is needed.
 `--source synthetic` replaces the webcam with fake features whose gaze follows the dot
 plus Gaussian noise. It exists to test the app end-to-end without a camera; synthetic
 sessions are marked in the log and are never accuracy results.
+
+Backends (spec 3.2): "landmark" (Method A) and "l2cs" (Method B, L2CS-Net on the MediaPipe face
+crop). Calibration variants: A (landmark features), B (L2CS gaze yaw/pitch) and B+pose (plus
+MediaPipe head yaw/pitch). With gaze.compare, every frame runs both backends and one calibration
+fits and validates all three variants on the same dots (a paired comparison); the cursor follows
+the primary variant.
 """
 import argparse
 import asyncio
@@ -19,6 +25,7 @@ import threading
 import time
 import webbrowser
 from collections import deque
+from dataclasses import dataclass
 from pathlib import Path
 
 import cv2
@@ -31,6 +38,7 @@ from fastapi.staticfiles import StaticFiles
 from gazeread.analysis.heatmap import analyze_session, export
 from gazeread.app.session import SessionLog, read_events
 from gazeread.gaze.backend_landmark import FEATURE_NAMES, FEATURE_SETS, LandmarkBackend
+from gazeread.gaze.backend_l2cs import L2CS_NAMES, L2CS_SETS
 from gazeread.gaze.calibration import (
     aggregate_dot, grid_targets, select_model, shuffled, validation_error, validation_targets,
     window_mask,
@@ -46,6 +54,29 @@ CAMERA_HELP = ("Camera failed to open. On macOS: System Settings > Privacy & Sec
 log = logging.getLogger("gazeread")
 
 
+@dataclass
+class Variant:
+    name: str            # "A", "B" or "B+pose"
+    backend: str         # "landmark" or "l2cs"
+    features: str        # feature-set name
+    sel: list[int]       # columns of that backend's FrameFeatures.vec
+
+
+def make_variants(cfg: dict) -> tuple[list[Variant], str]:
+    """Active calibration variants and the primary one's name (it drives the cursor)."""
+    fa, fb = cfg["calib"]["features"], cfg["l2cs"]["features"]
+    a = Variant("A", "landmark", fa, FEATURE_SETS[fa])
+    b = Variant("B", "l2cs", "gaze", L2CS_SETS["gaze"])
+    bp = Variant("B+pose", "l2cs", "gaze_pose", L2CS_SETS["gaze_pose"])
+    primary = a if cfg["gaze"]["backend"] == "landmark" else (bp if fb == "gaze_pose" else b)
+    return ([a, b, bp] if cfg["gaze"]["compare"] else [primary]), primary.name
+
+
+def feature_names(v: Variant) -> list[str]:
+    names = FEATURE_NAMES if v.backend == "landmark" else L2CS_NAMES
+    return [names[k] for k in v.sel]
+
+
 class SyntheticSource:
     """TEST ONLY. Gaze jumps to the current target after 200 ms, else drifts on a slow Lissajous;
     `noise_px` Gaussian noise per axis; ~2% of frames invalid (blinks). Features are a fixed
@@ -56,7 +87,7 @@ class SyntheticSource:
         self.rng = np.random.default_rng(seed)
         self._target, self._t_change, self._g = None, 0.0, None
 
-    def read(self, t: float, target, w: float, h: float) -> FrameFeatures:
+    def read(self, t: float, target, w: float, h: float) -> dict[str, FrameFeatures]:
         if target != self._target:
             self._target, self._t_change = target, t
         if target is not None and t - self._t_change >= 0.2:
@@ -68,7 +99,11 @@ class SyntheticSource:
         gx, gy = self._g + self.rng.normal(0, self.noise_px, 2)
         u, v = (gx / w - 0.5) * 0.4, (gy / h - 0.5) * 0.3
         vec = np.array([u, v, -u, v, 0.3, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0, 60.0])
-        return FrameFeatures(t=t, valid=bool(self.rng.random() > 0.02), vec=vec)
+        valid = bool(self.rng.random() > 0.02)
+        bx, by = gx + self.rng.normal(0, self.noise_px / 2), gy + self.rng.normal(0, self.noise_px / 2)
+        vb = np.array([(bx / w - 0.5) * 40, -(by / h - 0.5) * 25, *self.rng.normal(0, 0.5, 2)])
+        return {"landmark": FrameFeatures(t=t, valid=valid, vec=vec),
+                "l2cs": FrameFeatures(t=t, valid=valid, vec=vb)}
 
 
 class Pipeline:
@@ -76,10 +111,11 @@ class Pipeline:
 
     def __init__(self, cfg: dict, source: str):
         self.cfg, self.source = cfg, source
-        self.sel = FEATURE_SETS[cfg["calib"]["features"]]
-        self.buffer: deque[FrameFeatures] = deque(maxlen=600)    # ~20 s at 30 fps
+        self.variants, self.primary = make_variants(cfg)
+        self.backends = sorted({v.backend for v in self.variants})
+        self.buffer: deque[tuple[float, dict[str, FrameFeatures]]] = deque(maxlen=600)   # ~20 s at 30 fps
         self.lock = threading.Lock()
-        self.map = None
+        self.map = None                        # primary variant's calibration map
         self.filter = make_filter(cfg["filter"])
         self.screen = (1280.0, 800.0)
         self.target = None                     # current dot (synthetic source follows it)
@@ -88,7 +124,7 @@ class Pipeline:
         self.queue: asyncio.Queue | None = None
         self.fps, self.latency_ms, self.dropped = 0.0, 0.0, 0
         self._stop = threading.Event()
-        self._cap = self._backend = self._synth = None
+        self._cap = self._backend = self._l2cs = self._synth = None
 
     def open(self) -> None:
         if self.source == "synthetic":
@@ -100,11 +136,17 @@ class Pipeline:
         lm, pose = self.cfg["landmarks"], self.cfg["pose"]
         self._backend = LandmarkBackend(str(ROOT / lm["model_path"]), lm["eye_open_min"],
                                         pose["max_yaw_deg"], pose["max_pitch_deg"], lm["num_faces"])
+        if "l2cs" in self.backends:
+            from gazeread.gaze.backend_l2cs import L2CSBackend
+            c = self.cfg["l2cs"]
+            self._l2cs = L2CSBackend(str(ROOT / c["weights"]), c["crop_scale"], c["device"])
+            log.info("L2CS-Net loaded on %s", self._l2cs.device)
 
-    def _next(self) -> FrameFeatures | None:
+    def _next(self) -> dict[str, FrameFeatures] | None:
         if self._synth is not None:
             time.sleep(1 / 30)
-            return self._synth.read(time.monotonic(), self.target, *self.screen)
+            out = self._synth.read(time.monotonic(), self.target, *self.screen)
+            return {b: out[b] for b in self.backends}
         ok, frame = self._cap.read()
         t = time.monotonic()
         if not ok:
@@ -112,21 +154,28 @@ class Pipeline:
             if self.dropped % 30 == 1:
                 log.warning("dropped camera frames: %d", self.dropped)
             return None
-        return self._backend.process(frame, t)
+        det = self._backend.detect(frame, t)
+        out = {"landmark": self._backend.from_detection(det, t)}
+        if self._l2cs is not None:
+            out["l2cs"] = self._l2cs.from_detection(frame, det, out["landmark"].valid, t)
+        return {b: out[b] for b in self.backends}
 
     def run(self) -> None:
         n, t_stats = 0, time.monotonic()
         while not self._stop.is_set():
-            ff = self._next()
-            if ff is None:
+            frames = self._next()
+            if frames is None:
                 continue
+            pv = next(v for v in self.variants if v.name == self.primary)
+            ff = frames[pv.backend]
             with self.lock:
-                self.buffer.append(ff)
+                self.buffer.append((ff.t, frames))
                 m = self.map
             if self.session:
-                self.session.write("features", t=ff.t, valid=ff.valid, vec=ff.vec)
+                for b, f in frames.items():
+                    self.session.write("features", t=f.t, valid=f.valid, vec=f.vec, backend=b)
             if m is not None:
-                x, y = m.predict(ff.vec[self.sel]) if ff.valid else (math.nan, math.nan)
+                x, y = m.predict(ff.vec[pv.sel]) if ff.valid else (math.nan, math.nan)
                 gp = self.filter(ff.t, float(x), float(y), ff.valid)
                 if self.session:
                     self.session.write("gaze", t=gp.t, x=gp.x, y=gp.y, valid=gp.valid)
@@ -151,9 +200,9 @@ class Pipeline:
             q.put_nowait(msg)
         loop.call_soon_threadsafe(put)
 
-    def window(self, t_on: float, t_off: float) -> list[FrameFeatures]:
+    def window(self, t_on: float, t_off: float) -> list[dict[str, FrameFeatures]]:
         with self.lock:
-            return [f for f in self.buffer if t_on <= f.t <= t_off]
+            return [fr for t, fr in self.buffer if t_on <= t <= t_off]
 
     def stop(self) -> None:
         self._stop.set()
@@ -162,7 +211,8 @@ class Pipeline:
 
 
 async def run_calibration(p: Pipeline, q: asyncio.Queue) -> None:
-    """Show fit dots, fit the map, show validation dots, measure sigma_px, then start the cursor."""
+    """Show fit dots, fit a map per variant, show validation dots, measure sigma_px per variant
+    on the same frames, then start the cursor with the primary variant's map."""
     c = p.cfg["calib"]
     w, h = p.screen
     skip = (c["skip_start_s"], c["skip_end_s"])
@@ -181,55 +231,76 @@ async def run_calibration(p: Pipeline, q: asyncio.Queue) -> None:
 
     seed = int(time.time_ns() % 2**31) if c["order_seed"] is None else int(c["order_seed"])
     fit_targets = shuffled(grid_targets(c["n_points"], w, h, c["inset"]), seed)
-    X, Y = [], []
+    X = {v.name: [] for v in p.variants}
+    Y = {v.name: [] for v in p.variants}
     for i, (x, y) in enumerate(fit_targets):
         t_on, t_off, fr = await show(x, y, "fit", i, len(fit_targets))
-        if not fr:
-            continue
-        agg = aggregate_dot(np.array([f.t for f in fr]), np.array([f.vec for f in fr]),
-                            np.array([f.valid for f in fr]), t_on, t_off, *skip, c["min_samples"])
-        if agg is not None:
-            X.append(agg[p.sel])
-            Y.append((x, y))
-    if len(X) < max(len(p.sel) + 2, 6):
-        p.target = None
-        reason = f"only {len(X)} of {len(fit_targets)} dots had enough valid frames"
-        p.session.write("calib_result", ok=False, reason=reason)
-        await q.put({"type": "calib_failed", "reason": reason})
-        return
-    alphas = np.logspace(*c["alphas_log10"][:2], int(c["alphas_log10"][2]))
-    model, info = select_model(np.array(X), np.array(Y), tuple(c["degrees"]), alphas, c["poly2_margin"])
+        for v in p.variants:
+            ffs = [f[v.backend] for f in fr]
+            if not ffs:
+                continue
+            agg = aggregate_dot(np.array([f.t for f in ffs]), np.array([f.vec for f in ffs]),
+                                np.array([f.valid for f in ffs]), t_on, t_off, *skip, c["min_samples"])
+            if agg is not None:
+                X[v.name].append(agg[v.sel])
+                Y[v.name].append((x, y))
 
-    preds, targs, dot_med = [], [], []
+    alphas = np.logspace(*c["alphas_log10"][:2], int(c["alphas_log10"][2]))
+    models, infos, failed = {}, {}, {}
+    for v in p.variants:
+        if len(X[v.name]) < max(len(v.sel) + 2, 6):
+            failed[v.name] = f"only {len(X[v.name])} of {len(fit_targets)} dots had enough valid frames"
+            continue
+        models[v.name], infos[v.name] = select_model(np.array(X[v.name]), np.array(Y[v.name]),
+                                                     tuple(c["degrees"]), alphas, c["poly2_margin"])
+
+    preds = {v: [] for v in models}
+    targs = {v: [] for v in models}
+    dot_med = {v: [] for v in models}
     vt = shuffled(validation_targets(w, h), seed + 1)
     for i, (x, y) in enumerate(vt):
         t_on, t_off, fr = await show(x, y, "validate", i, len(vt))
-        fr = [f for f in fr if f.valid and window_mask(np.array([f.t]), t_on, t_off, *skip)[0]]
-        if fr:
-            P = model.predict(np.array([f.vec[p.sel] for f in fr]))
-            preds.append(P)
-            targs.append(np.tile([x, y], (len(P), 1)))
-            dot_med.append(float(np.linalg.norm(np.median(P, axis=0) - [x, y])))
-        else:
-            dot_med.append(None)
+        for v in p.variants:
+            if v.name not in models:
+                continue
+            ffs = [f[v.backend] for f in fr]
+            ffs = [f for f in ffs if f.valid and window_mask(np.array([f.t]), t_on, t_off, *skip)[0]]
+            if ffs:
+                P = models[v.name].predict(np.array([f.vec[v.sel] for f in ffs]))
+                preds[v.name].append(P)
+                targs[v.name].append(np.tile([x, y], (len(P), 1)))
+                dot_med[v.name].append(float(np.linalg.norm(np.median(P, axis=0) - [x, y])))
+            else:
+                dot_med[v.name].append(None)
     p.target = None
-    if not preds:
-        reason = "no valid frames during validation"
-        p.session.write("calib_result", ok=False, reason=reason)
-        await q.put({"type": "calib_failed", "reason": reason})
+
+    results = {}
+    for v in p.variants:
+        common = {"t": time.monotonic(), "variant": v.name, "backend": v.backend,
+                  "primary": v.name == p.primary, "n_points": c["n_points"], "features": v.features,
+                  "feature_names": feature_names(v), "order_seed": seed, "source": p.source}
+        if v.name not in failed and not preds[v.name]:
+            failed[v.name] = "no valid frames during validation"
+        if v.name in failed:
+            p.session.write("calib_result", ok=False, reason=failed[v.name], **common)
+            continue
+        err = validation_error(np.vstack(preds[v.name]), np.vstack(targs[v.name]))
+        results[v.name] = {"ok": True, **common, "n_fit_dots": len(X[v.name]), **infos[v.name],
+                           **err, "dot_median_err_px": dot_med[v.name]}
+        p.session.write("calib_result", **results[v.name])
+        log.info("calibration %s (%s): degree=%d alpha=%.3g LOO=%.1f px sigma=%.1f px", v.name,
+                 v.features, infos[v.name]["degree"], infos[v.name]["alpha"],
+                 infos[v.name]["loo_rms_px"], err["sigma_px"])
+    if p.primary not in results:
+        await q.put({"type": "calib_failed", "reason": failed[p.primary]})
         return
-    err = validation_error(np.vstack(preds), np.vstack(targs))
-    result = {"ok": True, "t": time.monotonic(), "n_points": c["n_points"], "features": c["features"],
-              "feature_names": [FEATURE_NAMES[k] for k in p.sel], "n_fit_dots": len(X),
-              "order_seed": seed,
-              **info, **err, "dot_median_err_px": dot_med, "source": p.source}
-    p.session.write("calib_result", **result)
-    log.info("calibration: %s degree=%d alpha=%.3g LOO=%.1f px sigma=%.1f px",
-             c["features"], info["degree"], info["alpha"], info["loo_rms_px"], err["sigma_px"])
     with p.lock:
         p.filter.reset()
-        p.map = model
-    await q.put({"type": "calib_done", **{k: v for k, v in result.items() if k != "candidates"}})
+        p.map = models[p.primary]
+    compare = [{"variant": n, **{k: r[k] for k in ("sigma_px", "rms_x", "rms_y", "loo_rms_px")}}
+               for n, r in results.items()]
+    done = {k: val for k, val in results[p.primary].items() if k != "candidates"}
+    await q.put({"type": "calib_done", **done, "compare": compare if len(p.variants) > 1 else []})
 
 
 def analyze_and_export(p: Pipeline) -> dict:
@@ -280,7 +351,9 @@ def create_app(p: Pipeline, cfg_hash: str) -> FastAPI:
                     p.session.write("meta", screen_w=msg["w"], screen_h=msg["h"], dpr=msg["dpr"],
                                     fps=p.fps, source=p.source, config_sha256=cfg_hash,
                                     n_points=p.cfg["calib"]["n_points"],
-                                    features=p.cfg["calib"]["features"])
+                                    features=p.cfg["calib"]["features"], backend=p.primary,
+                                    compare=p.cfg["gaze"]["compare"],
+                                    variants=[v.name for v in p.variants])
                     if calib_task:
                         calib_task.cancel()
                     calib_task = asyncio.create_task(run_calibration(p, q))
@@ -304,6 +377,8 @@ def main() -> None:
     ap.add_argument("--source", choices=["camera", "synthetic"])
     ap.add_argument("--n-points", type=int, choices=[9, 16])
     ap.add_argument("--features", choices=sorted(FEATURE_SETS))
+    ap.add_argument("--backend", choices=["landmark", "l2cs"])
+    ap.add_argument("--compare", action="store_true", help="run both backends; calibrate A, B, B+pose")
     ap.add_argument("--port", type=int)
     ap.add_argument("--open", action="store_true", help="open the page in the default browser")
     args = ap.parse_args()
@@ -316,6 +391,10 @@ def main() -> None:
         cfg["calib"]["n_points"] = args.n_points
     if args.features:
         cfg["calib"]["features"] = args.features
+    if args.backend:
+        cfg["gaze"]["backend"] = args.backend
+    if args.compare:
+        cfg["gaze"]["compare"] = True
     cfg_hash = hashlib.sha256(yaml.safe_dump(cfg, sort_keys=True).encode()).hexdigest()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -326,8 +405,8 @@ def main() -> None:
     except RuntimeError as e:
         sys.exit(str(e))
     p.session = SessionLog(ROOT / "sessions")
-    log.info("source=%s n_points=%d features=%s session=%s", p.source, cfg["calib"]["n_points"],
-             cfg["calib"]["features"], p.session.path)
+    log.info("source=%s variants=%s primary=%s n_points=%d session=%s", p.source,
+             [v.name for v in p.variants], p.primary, cfg["calib"]["n_points"], p.session.path)
     threading.Thread(target=p.run, daemon=True).start()
     url = f"http://{cfg['app']['host']}:{cfg['app']['port']}"
     if args.open:

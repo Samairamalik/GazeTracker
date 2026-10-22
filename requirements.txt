@@ -4,6 +4,8 @@ opencv-contrib-python==5.0.0.93   # pulled in by mediapipe; do not also install 
 numpy==2.4.6
 matplotlib==3.11.2                # sample image for tests/test_landmark_indices.py
 torch==2.14.1
+torchvision==0.29.1             # ResNet blocks + transforms for L2CS-Net
+safetensors==0.8.0              # pickle-free loading of the L2CS weights
 pyyaml==6.0.3
 pytest==9.1.1
 fastapi==0.159.1
