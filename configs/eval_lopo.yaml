@@ -11,8 +11,9 @@ global:
   alphas_log10: [-5, 6, 23]     # wide: the first run hit both ends of [-3, 3]
   inner_folds: 5                 # person-wise CV over the 14 training people
   poly2_margin: 0.10
-correction:                      # per-user residual correction (k >= 4), ridge towards the identity
+correction:                      # per-user affine correction (k >= 4); rule chosen per fold (nested)
   alphas_log10: [-3, 4, 15]
+rule_seeds: 2                    # k-shot draws per training person when choosing the rule
 variants:                        # name: [backend, columns of that backend's feature vector]
   A_iris: [landmark, [0, 1, 2, 3]]
   A_iris_pose: [landmark, [0, 1, 2, 3, 6, 7]]

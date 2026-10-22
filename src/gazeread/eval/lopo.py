@@ -76,19 +76,53 @@ def fit_global(X_by_person: list[np.ndarray], Y_by_person: list[np.ndarray], gcf
     return RidgeMap(deg, a, Scaler.fit(X)).fit(X, Y), {"degree": deg, "alpha": a, "inner_cv_mm": choice[0]}
 
 
-def corrected(G_cal: np.ndarray, Y_cal: np.ndarray, G_eval: np.ndarray, k: int, alphas) -> np.ndarray:
+RULES = ("identity", "zero")
+
+
+def corrected(G_cal: np.ndarray, Y_cal: np.ndarray, G_eval: np.ndarray, k: int, alphas,
+              rule: str = "identity") -> np.ndarray:
     """Per-user correction of global predictions from k calibration frames.
 
-    k=1..3: constant offset. k>=4: the residual Y - G is modelled as offset + B G with ridge on B,
-    i.e. regularised towards the identity, so heavy regularisation degrades to the offset-only
-    correction instead of collapsing onto the mean calibration target. alpha by LOO over the k points.
+    k=1..3: constant offset. k>=4: ridge affine map with alpha by LOO over the k points, either
+    rule="identity" (residual Y - G = offset + B G, ridge on B: heavy regularisation degrades to
+    the offset-only correction) or rule="zero" (Y = offset + B G, ridge on B: heavy regularisation
+    collapses onto the mean calibration target). Which rule is used is decided per fold from the
+    training people only (choose_rules).
     """
     if k == 0:
         return G_eval
     if k < 4:
         return G_eval + (Y_cal - G_cal).mean(0)
-    m, _ = select_model(G_cal, Y_cal - G_cal, degrees=(1,), alphas=alphas)
-    return G_eval + m.predict(G_eval)
+    if rule == "identity":
+        m, _ = select_model(G_cal, Y_cal - G_cal, degrees=(1,), alphas=alphas)
+        return G_eval + m.predict(G_eval)
+    m, _ = select_model(G_cal, Y_cal, degrees=(1,), alphas=alphas)
+    return m.predict(G_eval)
+
+
+def choose_rules(Xs: list[np.ndarray], Ys: list[np.ndarray], info: dict, cfg: dict) -> dict:
+    """Nested choice of the correction rule for each k >= 4, using ONLY the training people passed
+    in: each is simulated as a new user (global map with the fold's degree/alpha refitted on the
+    other training people of an inner split), both rules are scored, and the lower mean error wins."""
+    n = len(Xs)
+    alphas = _alphas(cfg["correction"]["alphas_log10"])
+    err = {(k, r): [] for k in cfg["k_values"] if k >= 4 for r in RULES}
+    for f in np.array_split(np.arange(n), min(cfg["global"]["inner_folds"], n)):
+        tr = [i for i in range(n) if i not in f]
+        Xtr, Ytr = np.vstack([Xs[i] for i in tr]), np.vstack([Ys[i] for i in tr])
+        G = RidgeMap(info["degree"], info["alpha"], Scaler.fit(Xtr)).fit(Xtr, Ytr)
+        for i in f:
+            Gi = G.predict(Xs[i])
+            for k in cfg["k_values"]:
+                if k < 4:
+                    continue
+                for s in range(cfg["rule_seeds"]):
+                    cal = select_kshot_points(Ys[i], k, 10_000 + s)
+                    ev = np.setdiff1d(np.arange(len(Ys[i])), cal)
+                    for r in RULES:
+                        pr = corrected(Gi[cal], Ys[i][cal], Gi[ev], k, alphas, r)
+                        err[(k, r)].append(np.linalg.norm(pr - Ys[i][ev], axis=1).mean())
+    return {k: min(RULES, key=lambda r: np.mean(err[(k, r)])) for k in cfg["k_values"] if k >= 4}
 
 
 def evaluate(people: dict, cfg: dict, variants: dict) -> tuple[list[dict], list[dict], dict]:
@@ -101,6 +135,7 @@ def evaluate(people: dict, cfg: dict, variants: dict) -> tuple[list[dict], list[
             Xs = [people[q][backend][people[q]["valid"]][:, cols] for q in train]
             Ys = [people[q]["target_mm"][people[q]["valid"]] for q in train]
             G, info = fit_global(Xs, Ys, cfg["global"])
+            info["rules"] = choose_rules(Xs, Ys, info, cfg)          # training people only
             choices[(vname, p)] = info
             P = people[p]
             vidx = np.flatnonzero(P["valid"])
@@ -112,7 +147,9 @@ def evaluate(people: dict, cfg: dict, variants: dict) -> tuple[list[dict], list[
                     cal = select_kshot_points(Y, k, cfg["seed"] * 1000 + s) if k > 0 else np.array([], int)
                     ev = np.setdiff1d(np.arange(len(vidx)), cal)
                     assert not np.intersect1d(cal, ev).size            # no calibration frame is evaluated
-                    preds = {"global+correction": corrected(G_all[cal], Y[cal], G_all[ev], k, _alphas(cfg["correction"]["alphas_log10"]))}
+                    preds = {"global+correction": corrected(G_all[cal], Y[cal], G_all[ev], k,
+                                                            _alphas(cfg["correction"]["alphas_log10"]),
+                                                            info["rules"].get(k, "identity"))}
                     if k >= cfg["per_user_min_k"]:
                         m, _ = select_model(X[cal], Y[cal])
                         preds["per-user"] = m.predict(X[ev])
@@ -277,10 +314,15 @@ def summary_md(table, excl, choices, cfg, runtime) -> str:
                "optimistic; the table also gives each mean without them.") if flagged else
           f"No participant has more than {100 * flag:.0f}% excluded frames.", "",
           "## Global model chosen per fold (inner person-wise CV over the 14 training people)", "",
-          "| variant | degrees chosen | alphas chosen |", "|---|---|---|"]
+          "| variant | degrees chosen | alphas chosen | correction rule chosen per k (folds identity/zero) |",
+          "|---|---|---|---|"]
     for v in cfg["variants"]:
         cs = [c for (vn, _), c in choices.items() if vn == v]
-        L.append(f"| {v} | {sorted({int(c['degree']) for c in cs})} | {sorted({float(round(c['alpha'], 4)) for c in cs})} |")
+        rules = ", ".join(f"k={k}: {sum(c['rules'][k] == 'identity' for c in cs)}/{sum(c['rules'][k] == 'zero' for c in cs)}"
+                          for k in sorted(cs[0]["rules"]))
+        L.append(f"| {v} | {sorted({int(c['degree']) for c in cs})} | {sorted({float(round(c['alpha'], 4)) for c in cs})} | {rules} |")
+    L += ["", "The correction rule for k >= 4 is chosen inside each fold by simulating the 14 training people "
+          "as new users (inner splits); the held-out person never influences it."]
     return "\n".join(L) + "\n"
 
 

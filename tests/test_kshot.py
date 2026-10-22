@@ -95,3 +95,19 @@ def test_correction_shrinks_to_offset_not_to_mean():
     for alphas in ([1e6], [1e-3]):                         # heavy or light regularisation
         out = lopo.corrected(G, Y, G_eval, 4, np.array(alphas))
         np.testing.assert_allclose(out, G_eval + [5.0, -3.0], atol=1e-2)
+
+
+def test_heldout_person_cannot_influence_their_folds_rule_or_hyperparameters():
+    cfg = yaml.safe_load(open("configs/eval_lopo.yaml"))
+    cfg.update(k_values=[0, 4, 9], n_seeds=1, rule_seeds=1)
+    cfg["global"].update(alphas_log10=[-2, 2, 3], inner_folds=2)
+    people = fake_people()
+    variant = {"A": ["landmark", list(range(12))]}
+    _, _, before = lopo.evaluate(people, cfg, variant)
+    corrupt = {k: dict(v) for k, v in people.items()}
+    rng = np.random.default_rng(9)
+    corrupt["p02"]["target_mm"] = rng.permutation(people["p02"]["target_mm"]) * 3   # garbage labels
+    corrupt["p02"]["landmark"] = rng.normal(size=people["p02"]["landmark"].shape)
+    _, _, after = lopo.evaluate(corrupt, cfg, variant)
+    assert before[("A", "p02")] == after[("A", "p02")]      # p02's own fold: identical choices
+    assert any(before[("A", q)] != after[("A", q)] for q in people if q != "p02")   # p02 does train others
