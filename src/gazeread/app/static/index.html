@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>GazeRead</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #7f7f7f;
+               font: 16px system-ui, sans-serif; color: #111; }
+  body.calibrating { cursor: none; }
+  #intro { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+           justify-content: center; gap: 4px; text-align: center; padding: 0 16px; }
+  #dot { position: fixed; left: 0; top: 0; width: 44px; height: 44px; margin: -22px 0 0 -22px;
+         border-radius: 50%; border: 3px solid #fff; box-sizing: border-box; display: none; }
+  #dot::after { content: ""; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px;
+                margin: -3px; border-radius: 50%; background: #000; }
+  #dot.validate { border-color: #1c1; }
+  #dot.shrink { animation: shrink var(--dur, 1.5s) linear forwards; }
+  @keyframes shrink { from { transform: scale(1); } to { transform: scale(0.3); } }
+  #gaze { position: fixed; left: 0; top: 0; width: 36px; height: 36px; margin: -18px 0 0 -18px;
+          border-radius: 50%; background: rgba(230, 30, 30, .35); border: 2px solid rgba(230, 30, 30, .9);
+          display: none; pointer-events: none; will-change: transform; }
+  #hud { position: fixed; left: 8px; bottom: 8px; padding: 6px 10px; border-radius: 6px;
+         background: rgba(0, 0, 0, .65); color: #fff; font: 13px ui-monospace, monospace;
+         white-space: pre; }
+  #msg { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); padding: 6px 12px;
+         border-radius: 6px; background: rgba(0, 0, 0, .7); color: #fff; display: none; }
+  .synthetic { color: #ffb000; font-weight: bold; }
+</style>
+</head>
+<body>
+<div id="intro">
+  <h2>GazeRead calibration</h2>
+  <p>Webcam is used live for gaze estimation only; no video or images are saved.</p>
+  <p>Sit about 60 cm from the screen and keep your head still. Look at the centre of each dot until it moves.</p>
+  <p>Press <b>Enter</b> to go fullscreen and start.</p>
+</div>
+<div id="dot"></div>
+<div id="gaze"></div>
+<div id="msg"></div>
+<div id="hud">connecting…</div>
+<script src="calibrate.js"></script>
+</body>
+</html>

@@ -4,3 +4,30 @@ landmarks:
   eye_open_min: 0.15   # lid distance / eye width; below this an eye counts as closed
 camera:
   index: 0
+pose:
+  max_yaw_deg: 30      # |yaw| above this -> valid=False
+  max_pitch_deg: 25
+calib:
+  n_points: 9          # 9 (3x3) or 16 (4x4); override: make app N_POINTS=16
+  features: iris_pose  # iris (uR,vR,uL,vL), iris_pose (+ yaw, pitch) or iris_open (+ eye openness); override: make app FEATURES=iris_open
+  inset: 0.08          # fraction of viewport w/h
+  order_seed: null     # dot order shuffle seed; null = new seed per calibration (logged in calib_result)
+  dot_s: 1.5
+  skip_start_s: 0.4    # saccade latency
+  skip_end_s: 0.1
+  min_samples: 5       # valid frames needed per dot
+  degrees: [1, 2]      # affine, quadratic
+  alphas_log10: [-4, 3, 15]   # logspace(start, stop, num)
+  poly2_margin: 0.10   # quadratic must beat affine LOO RMS by this fraction
+filter:
+  kind: one_euro       # one_euro or moving_average
+  min_cutoff_hz: 1.0
+  beta: 0.005          # 1/px
+  d_cutoff_hz: 1.0
+  ma_n: 5
+  max_hold_s: 0.15
+app:
+  host: 127.0.0.1
+  port: 8000
+  source: camera       # camera or synthetic (synthetic = test only, never an accuracy result)
+  synthetic_noise_px: 20
