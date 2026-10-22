@@ -1,0 +1,4 @@
+sigma_label,sigma_y,min_para_lines_rho_0.7,rho_para@2L,rho_para@4L,rho_para@6L,rho_para@8L,rho_para@10L
+A best,129.5,5,0.5823,0.6362,0.9619,0.9676,0.9771
+A median,186.1,5,0.2743,0.6248,0.9657,0.9661,0.9488
+B median,187.7,5,0.4013,0.4667,0.9528,0.9352,0.9581

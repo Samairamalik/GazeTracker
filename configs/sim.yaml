@@ -1,0 +1,45 @@
+# M4 reading simulation (spec 7.3). Analysis + filter parameters come from configs/default.yaml
+# (the app's own), measured sigma/noise shape from results/tables/measured_sigma_summary.csv.
+seed: 0
+n_seeds: 30
+target_rho: 0.7
+viewport: {w: 1512, h: 945, margin_x: 80, margin_y: 60}   # the live reading page
+layout:
+  line_height: 2.2       # pitch = line_height * font_px (as the app)
+  column_ch: 60
+  char_w_em: 0.436       # measured: 13.07 px per character at 30 px Georgia
+  para_gap_lines: 1.0
+  para_lines: [4, 6]     # lines per paragraph, uniform integer (pitch sweep)
+  n_paras: 6
+  min_chars_per_line: 30 # feasibility: the column must still fit this many characters
+  ragged_chars: 6        # full lines are column_ch - U(0, ragged_chars) characters
+  last_line_frac: [0.3, 0.9]
+reading:
+  start_chars: 3         # first fixation this far into the line
+  saccade_chars: [7, 9]
+  fix_mean_s: 0.225
+  fix_sd_s: 0.05
+  regress_p: 0.10
+  regress_chars: [3, 6]
+  reread_line_p: 0.03
+  skim_p: 0.25           # per paragraph
+  skim_saccade_chars: [15, 20]
+  skim_fix_mean_s: 0.15
+  skim_line_skip_p: 0.4
+  saccade_s: 0.03        # gaze in flight between fixations
+  page_turn_s: 0.5       # no valid gaze while the page turns
+  fix_y_jitter_pitch: 0.05
+noise:
+  drift_tau_s: 20        # Ornstein-Uhlenbeck time constant of the systematic part
+  invalid_frac: 0.04
+  blink_frames: [3, 8]
+  fps: 30
+grid:
+  sigma_y: [2, 15, 25, 40, 60, 90, 130, 185, 260, 350]   # 2 = near-perfect tracking (metric ceiling)
+  pitch: [50, 66, 80, 100, 130, 160, 200]   # 66 = app default
+  base_pitch: 66
+  para_lines_sweep: [2, 4, 6, 8, 10]        # at base_pitch
+  para_sweep_n_paras: 6          # constant, so paragraph rho always ranks 6 items
+  idt_k: [1.25, 2, 3, 4]   # I-DT threshold sweep (app default 1.25)
+  mapping: [soft, hard]
+  filter: [true, false]
