@@ -43,23 +43,29 @@ class Detection:
 class LandmarkDetector:
     """FaceLandmarker in VIDEO mode. Call `detect` once per frame with increasing times."""
 
-    def __init__(self, model_path: str, num_faces: int = 1):
+    def __init__(self, model_path: str, num_faces: int = 1, video: bool = True):
+        """video=True for a live stream (temporal tracking); False for unrelated still images."""
         options = vision.FaceLandmarkerOptions(
             base_options=BaseOptions(model_asset_path=model_path),
-            running_mode=vision.RunningMode.VIDEO,
+            running_mode=vision.RunningMode.VIDEO if video else vision.RunningMode.IMAGE,
             num_faces=num_faces,
             output_facial_transformation_matrixes=True,
         )
         self._landmarker = vision.FaceLandmarker.create_from_options(options)
+        self._video = video
         self._last_ms = -1
 
-    def detect(self, frame_bgr: np.ndarray, t_s: float) -> Detection | None:
-        """Run on one BGR frame captured at monotonic time `t_s` (seconds). None if no face."""
-        t_ms = max(int(t_s * 1000), self._last_ms + 1)   # MediaPipe needs strictly increasing ms
-        self._last_ms = t_ms
+    def detect(self, frame_bgr: np.ndarray, t_s: float = 0.0) -> Detection | None:
+        """Run on one BGR frame captured at monotonic time `t_s` (seconds; ignored for still
+        images). None if no face."""
         rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
-        result = self._landmarker.detect_for_video(image, t_ms)
+        if self._video:
+            t_ms = max(int(t_s * 1000), self._last_ms + 1)   # MediaPipe needs strictly increasing ms
+            self._last_ms = t_ms
+            result = self._landmarker.detect_for_video(image, t_ms)
+        else:
+            result = self._landmarker.detect(image)
         if not result.face_landmarks:
             return None
         h, w = frame_bgr.shape[:2]

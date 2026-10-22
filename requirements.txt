@@ -6,6 +6,7 @@ matplotlib==3.11.2                # sample image for tests/test_landmark_indices
 torch==2.14.1
 torchvision==0.29.1             # ResNet blocks + transforms for L2CS-Net
 safetensors==0.8.0              # pickle-free loading of the L2CS weights
+scipy==1.17.1                   # MATLAB 5 calibration files of MPIIFaceGaze
 pyyaml==6.0.3
 pytest==9.1.1
 fastapi==0.159.1

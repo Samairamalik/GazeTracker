@@ -4,7 +4,7 @@ MODEL_URL := https://storage.googleapis.com/mediapipe-models/face_landmarker/fac
 APP_ARGS := $(if $(SOURCE),--source $(SOURCE)) $(if $(N_POINTS),--n-points $(N_POINTS)) $(if $(FEATURES),--features $(FEATURES)) \
             $(if $(BACKEND),--backend $(BACKEND)) $(if $(COMPARE),--compare)
 
-.PHONY: setup check test debug-landmarks app replay compare sim results measured-sigma
+.PHONY: setup check test debug-landmarks app replay compare sim results measured-sigma extract-mpii eval-lopo
 
 setup:
 	test -d .venv || uv venv --python 3.11 .venv
@@ -40,4 +40,11 @@ sim:
 measured-sigma:
 	PYTHONPATH=src $(PY) -m gazeread.eval.measured_sigma
 
-results: sim
+# M5: MPIIFaceGaze (needs data/raw/MPIIFaceGaze, see CITATIONS.md). Extraction is cached per participant.
+extract-mpii:
+	PYTHONPATH=src $(PY) -m gazeread.eval.extract_mpii
+
+eval-lopo: extract-mpii
+	PYTHONPATH=src $(PY) -m gazeread.eval.lopo
+
+results: sim eval-lopo

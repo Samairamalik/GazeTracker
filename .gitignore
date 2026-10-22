@@ -1,7 +1,7 @@
 .venv/
-data/
-models/
-sessions/
+/data/
+/models/
+/sessions/
 __pycache__/
 .pytest_cache/
 *.task

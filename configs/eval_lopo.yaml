@@ -1,0 +1,24 @@
+# M5: leave-one-person-out on MPIIFaceGaze with simulated k-shot calibration (spec 7.1).
+dataset_dir: data/raw/MPIIFaceGaze
+processed_dir: data/processed
+k_values: [0, 1, 4, 9, 16, 25]   # 0 = global map only
+per_user_min_k: 9                # "per-user only" strategy is reported for k >= this
+n_seeds: 5
+seed: 0
+excluded_flag_frac: 0.15         # flag participants with more excluded frames than this
+global:
+  degrees: [1, 2]
+  alphas_log10: [-5, 6, 23]     # wide: the first run hit both ends of [-3, 3]
+  inner_folds: 5                 # person-wise CV over the 14 training people
+  poly2_margin: 0.10
+correction:                      # per-user residual correction (k >= 4), ridge towards the identity
+  alphas_log10: [-3, 4, 15]
+variants:                        # name: [backend, columns of that backend's feature vector]
+  A_iris: [landmark, [0, 1, 2, 3]]
+  A_iris_pose: [landmark, [0, 1, 2, 3, 6, 7]]
+  B: [l2cs, [0, 1]]
+  B_pose: [l2cs, [0, 1, 2, 3]]
+headline: [A_iris_pose, B]       # the app's default A, and B
+# The user's display, read with CoreGraphics on 2026-10-22 (CGDisplayScreenSize + CGDisplayBounds):
+# Built-in Liquid Retina XDR, 301.2 x 195.6 mm at 1512 x 982 points (= the app's CSS px).
+my_screen: {width_mm: 301.2, height_mm: 195.6, width_px: 1512, height_px: 982}
