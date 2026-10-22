@@ -123,7 +123,7 @@ class LineBox:
 All screen coordinates are **viewport CSS pixels in a fullscreen browser window**. Calibration dots and text line boxes live in the same coordinate frame, which avoids screen/window offset bugs. Account for `devicePixelRatio` on Retina displays and record it in the session log.
 
 ### 4.3 Session log format (JSONL, one event per line, in `sessions/<id>/events.jsonl`, gitignored)
-Event types: `meta` (screen size, devicePixelRatio, fps, config hash, `source`: camera|synthetic; synthetic sessions are test runs and are never reported as accuracy results), `calib_target` (x, y, t_on, t_off, `phase`: fit|validate), `calib_result` (ok, n_points, features, degree, alpha, loo_rms_px, sigma_px, rms_x, rms_y, per-dot median error; or ok=false with a reason), `features` (t, valid, vec), `gaze` (t, x, y, valid), `page` (page index, line boxes), `answer` (question id, response, correct). Analysis scripts must work from logs alone, so any experiment can be re-run offline without the webcam.
+Event types: `meta` (screen size, devicePixelRatio, fps, config hash, `source`: camera|synthetic; synthetic sessions are test runs and are never reported as accuracy results), `calib_target` (x, y, t_on, t_off, `phase`: fit|validate), `calib_result` (ok, n_points, features, degree, alpha, loo_rms_px, sigma_px, rms_x, rms_y, per-dot median error; or ok=false with a reason), `features` (t, valid, vec), `gaze` (t, x, y, valid), `page` (page index, t_on stamped by Python on receipt, line boxes, line_pitch, font_px), `reading_end` (t; closes the last page of a reading), `answer` (question id, response, correct). Analysis scripts must work from logs alone, so any experiment can be re-run offline without the webcam.
 
 ---
 
@@ -184,12 +184,13 @@ Runtime split for the live app:
 
 ### 6.4 Line and paragraph mapping (`analysis/line_mapping.py`)
 - **Hard assignment:** nearest line box by vertical distance (with a tolerance).
-- **Soft assignment (preferred):** distribute each fixation's duration across lines with Gaussian weights in y, using `sigma_y` equal to calibration `sigma_px`. This avoids brittle line flipping when error exceeds line pitch.
+- **Soft assignment (preferred):** distribute each fixation's duration across lines with Gaussian weights in y, using `sigma_y` equal to the calibration's vertical RMS error `rms_y` (the Euclidean `sigma_px` overstates the vertical spread). This avoids brittle line flipping when error exceeds line pitch.
+- **Two time sources:** credit time from I-DT fixations and, alternatively, from every gaze sample (`samples` mode, each sample's time to the next sample). Both are always reported so they can be compared in M4; `analysis.mapping_source` picks the primary view.
 - Output dwell time per line and per paragraph, normalized per page.
 
 ### 6.5 Heatmap (`analysis/heatmap.py`, `static/heatmap.js`)
 - Overlay a color gradient on each line (and a paragraph-level band). Also provide a scanpath view (fixation dots sized by duration, joined by lines). Export PNG and a JSON of dwell values.
-- Auto granularity (see 6.1 and 1): if `sigma_px` is more than half the line pitch, show paragraph-level as primary and label line-level as "low confidence".
+- Auto granularity (see 6.1 and 1): if `rms_y` is more than half the line pitch, show paragraph-level as primary and label line-level as "low confidence".
 
 ---
 

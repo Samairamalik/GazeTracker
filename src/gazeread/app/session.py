@@ -48,6 +48,11 @@ class SessionLog:
                 self._f.flush()
                 self._last_flush = now
 
+    def flush(self) -> None:
+        with self._lock:
+            self._f.flush()
+            self._last_flush = time.monotonic()
+
     def close(self) -> None:
         with self._lock:
             self._f.close()

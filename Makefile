@@ -3,7 +3,7 @@ MODEL_URL := https://storage.googleapis.com/mediapipe-models/face_landmarker/fac
 # Optional overrides for `make app`, e.g. make app N_POINTS=16 FEATURES=iris
 APP_ARGS := $(if $(SOURCE),--source $(SOURCE)) $(if $(N_POINTS),--n-points $(N_POINTS)) $(if $(FEATURES),--features $(FEATURES))
 
-.PHONY: setup check test debug-landmarks app
+.PHONY: setup check test debug-landmarks app replay
 
 setup:
 	test -d .venv || uv venv --python 3.11 .venv
@@ -22,3 +22,7 @@ debug-landmarks:
 
 app:
 	PYTHONPATH=src $(PY) -m gazeread.app.server --open $(APP_ARGS)
+
+# Recompute a session's heatmap offline and check it equals the live one: make replay SESSION=sessions/<id>
+replay:
+	$(PY) scripts/replay_session.py $(SESSION) --check

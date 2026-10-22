@@ -31,3 +31,19 @@ app:
   port: 8000
   source: camera       # camera or synthetic (synthetic = test only, never an accuracy result)
   synthetic_noise_px: 20
+reading:
+  text: alice_excerpts # file in src/gazeread/app/static/texts/<text>.txt, paragraphs separated by blank lines
+  font_px: 30
+  line_height: 2.2     # line pitch = font_px * line_height = 66 px
+  column_ch: 60        # column width in characters
+  para_gap_lines: 1.0  # extra space between paragraphs, in line pitches
+  margin_y_px: 60
+  show_cursor: false   # a visible gaze cursor changes how people read
+analysis:
+  mapping_mode: soft   # soft (Gaussian in y, sigma = calibration rms_y) or hard (nearest line)
+  mapping_source: fixations  # primary view: fixations (I-DT) or samples; both are always in the result JSON
+  idt_k: 1.25          # I-DT dispersion threshold = idt_k * sigma_px
+  min_fix_s: 0.1
+  merge_gap_s: 0.075
+  hard_tol_lines: 1.0  # hard mode: nearest line only if its centre is within this many line pitches
+  max_sample_dt_s: 0.1 # samples mode: cap on time credited to one sample

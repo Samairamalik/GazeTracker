@@ -25,6 +25,17 @@
   #msg { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); padding: 6px 12px;
          border-radius: 6px; background: rgba(0, 0, 0, .7); color: #fff; display: none; }
   .synthetic { color: #ffb000; font-weight: bold; }
+  #reader, #results { position: fixed; inset: 0; background: #ebe7dd; display: none; }
+  body.reading #reader, body.results #results { display: block; }
+  body.reading #hud, body.results #hud, body.hide-cursor #gaze, body.results #gaze { display: none !important; }
+  #column { position: absolute; color: #1a1a1a; }
+  .line { white-space: nowrap; }
+  #results .box { position: absolute; border-radius: 4px; }
+  #results .rline { position: absolute; white-space: nowrap; color: #1a1a1a; }
+  #results .scan { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  #legend { position: fixed; left: 8px; bottom: 8px; padding: 6px 10px; border-radius: 6px;
+            background: rgba(0, 0, 0, .7); color: #fff; font: 13px ui-monospace, monospace; white-space: pre; }
+  #legend:empty { display: none; }
 </style>
 </head>
 <body>
@@ -37,7 +48,12 @@
 <div id="dot"></div>
 <div id="gaze"></div>
 <div id="msg"></div>
+<div id="reader"><div id="column"></div></div>
+<div id="results"></div>
+<div id="legend"></div>
 <div id="hud">connecting…</div>
 <script src="calibrate.js"></script>
+<script src="reader.js"></script>
+<script src="heatmap.js"></script>
 </body>
 </html>

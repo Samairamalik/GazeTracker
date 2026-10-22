@@ -28,7 +28,8 @@ import yaml
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 
-from gazeread.app.session import SessionLog
+from gazeread.analysis.heatmap import analyze_session, export
+from gazeread.app.session import SessionLog, read_events
 from gazeread.gaze.backend_landmark import FEATURE_NAMES, FEATURE_SETS, LandmarkBackend
 from gazeread.gaze.calibration import (
     aggregate_dot, grid_targets, select_model, shuffled, validation_error, validation_targets,
@@ -218,7 +219,7 @@ async def run_calibration(p: Pipeline, q: asyncio.Queue) -> None:
         await q.put({"type": "calib_failed", "reason": reason})
         return
     err = validation_error(np.vstack(preds), np.vstack(targs))
-    result = {"ok": True, "n_points": c["n_points"], "features": c["features"],
+    result = {"ok": True, "t": time.monotonic(), "n_points": c["n_points"], "features": c["features"],
               "feature_names": [FEATURE_NAMES[k] for k in p.sel], "n_fit_dots": len(X),
               "order_seed": seed,
               **info, **err, "dot_median_err_px": dot_med, "source": p.source}
@@ -229,6 +230,16 @@ async def run_calibration(p: Pipeline, q: asyncio.Queue) -> None:
         p.filter.reset()
         p.map = model
     await q.put({"type": "calib_done", **{k: v for k, v in result.items() if k != "candidates"}})
+
+
+def analyze_and_export(p: Pipeline) -> dict:
+    """Analyse the latest reading from the session log itself (same path as offline replay)."""
+    p.session.flush()
+    result = analyze_session(read_events(p.session.path), p.cfg["analysis"])
+    export(result, p.session.dir)
+    log.info("analysis: %d pages, granularity %s, written to %s",
+             len(result["pages"]), result["granularity"], p.session.dir)
+    return result
 
 
 def create_app(p: Pipeline, cfg_hash: str) -> FastAPI:
@@ -248,9 +259,22 @@ def create_app(p: Pipeline, cfg_hash: str) -> FastAPI:
                 await ws.send_json(msg)
 
         send_task, calib_task = asyncio.create_task(sender()), None
+        await q.put({"type": "config", "reading": p.cfg["reading"], "session": p.session.id})
         try:
             while True:
                 msg = await ws.receive_json()
+                if msg.get("type") == "page":          # page shown now; Python stamps the time
+                    p.session.write("page", page=msg["page"], t_on=time.monotonic(),
+                                    lines=msg["lines"], line_pitch=msg["line_pitch"],
+                                    font_px=msg["font_px"], n_pages=msg["n_pages"])
+                elif msg.get("type") == "reading_end":
+                    p.session.write("reading_end", t=time.monotonic())
+                    try:
+                        result = await asyncio.to_thread(analyze_and_export, p)
+                        await q.put({"type": "analysis", "result": result,
+                                     "dir": str(p.session.dir.relative_to(ROOT))})
+                    except ValueError as e:
+                        await q.put({"type": "analysis_failed", "reason": str(e)})
                 if msg.get("type") == "hello":       # (re)start calibration for this viewport
                     p.screen = (float(msg["w"]), float(msg["h"]))
                     p.session.write("meta", screen_w=msg["w"], screen_h=msg["h"], dpr=msg["dpr"],

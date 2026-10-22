@@ -8,6 +8,8 @@ function send(msg) { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringif
 
 function hello() {
   calib = null;
+  Reader.reset();
+  Heatmap.clear();
   $("gaze").style.display = "none";
   $("msg").style.display = "none";
   document.body.classList.add("calibrating");
@@ -68,6 +70,8 @@ function renderHud(status) {
 
 ws.onmessage = (ev) => {
   const m = JSON.parse(ev.data);
+  Reader.handle(m);
+  Heatmap.handle(m);
   if (m.type === "dot") showDot(m);
   else if (m.type === "calib_done") {
     calib = m;
