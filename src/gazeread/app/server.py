@@ -123,6 +123,7 @@ class Pipeline:
         self.loop: asyncio.AbstractEventLoop | None = None
         self.queue: asyncio.Queue | None = None
         self.fps, self.latency_ms, self.dropped = 0.0, 0.0, 0
+        self.logged_t = -math.inf              # capture time of the last frame fully written to the log
         self._stop = threading.Event()
         self._cap = self._backend = self._l2cs = self._synth = None
 
@@ -181,6 +182,7 @@ class Pipeline:
                     self.session.write("gaze", t=gp.t, x=gp.x, y=gp.y, valid=gp.valid)
                 self.emit({"type": "gaze", "t": gp.t, "x": gp.x if gp.valid else None,
                            "y": gp.y if gp.valid else None, "valid": gp.valid})
+            self.logged_t = ff.t
             n += 1
             now = time.monotonic()
             if now - t_stats >= 5.0:
@@ -303,8 +305,22 @@ async def run_calibration(p: Pipeline, q: asyncio.Queue) -> None:
     await q.put({"type": "calib_done", **done, "compare": compare if len(p.variants) > 1 else []})
 
 
-def analyze_and_export(p: Pipeline) -> dict:
-    """Analyse the latest reading from the session log itself (same path as offline replay)."""
+def wait_until_logged(p, t: float, timeout_s: float = 1.0) -> bool:
+    """Block until the capture thread has logged a frame captured after `t`, so every frame
+    captured before `t` is already in the log. False on timeout (e.g. the camera stalled)."""
+    deadline = time.monotonic() + timeout_s
+    while p.logged_t <= t:
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.005)
+    return True
+
+
+def analyze_and_export(p: Pipeline, t_end: float) -> dict:
+    """Analyse the latest reading from the session log itself (same path as offline replay).
+    Waits for in-flight frames captured before `t_end` so the replay sees the same events."""
+    if not wait_until_logged(p, t_end):
+        log.warning("no frame logged after reading_end within 1 s; analysis may miss in-flight samples")
     p.session.flush()
     result = analyze_session(read_events(p.session.path), p.cfg["analysis"])
     export(result, p.session.dir)
@@ -339,9 +355,10 @@ def create_app(p: Pipeline, cfg_hash: str) -> FastAPI:
                                     lines=msg["lines"], line_pitch=msg["line_pitch"],
                                     font_px=msg["font_px"], n_pages=msg["n_pages"])
                 elif msg.get("type") == "reading_end":
-                    p.session.write("reading_end", t=time.monotonic())
+                    t_end = time.monotonic()
+                    p.session.write("reading_end", t=t_end)
                     try:
-                        result = await asyncio.to_thread(analyze_and_export, p)
+                        result = await asyncio.to_thread(analyze_and_export, p, t_end)
                         await q.put({"type": "analysis", "result": result,
                                      "dir": str(p.session.dir.relative_to(ROOT))})
                     except ValueError as e:
