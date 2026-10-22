@@ -1,0 +1,9 @@
+.venv/
+data/
+models/
+sessions/
+__pycache__/
+.pytest_cache/
+*.task
+*.pkl
+.DS_Store

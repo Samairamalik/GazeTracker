@@ -1,0 +1,6 @@
+landmarks:
+  model_path: models/face_landmarker.task
+  num_faces: 1
+  eye_open_min: 0.15   # lid distance / eye width; below this an eye counts as closed
+camera:
+  index: 0
