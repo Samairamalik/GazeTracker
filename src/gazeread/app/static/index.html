@@ -29,6 +29,7 @@
   body.reading #reader, body.results #results { display: block; }
   body.reading #hud, body.results #hud, body.hide-cursor #gaze, body.results #gaze { display: none !important; }
   #column { position: absolute; color: #1a1a1a; }
+  #pageno { position: absolute; right: 16px; bottom: 12px; color: #8a857a; font: 14px system-ui, sans-serif; }
   .line { white-space: nowrap; }
   #results .box { position: absolute; border-radius: 4px; }
   #results .rline { position: absolute; white-space: nowrap; color: #1a1a1a; }
@@ -48,7 +49,7 @@
 <div id="dot"></div>
 <div id="gaze"></div>
 <div id="msg"></div>
-<div id="reader"><div id="column"></div></div>
+<div id="reader"><div id="column"></div><div id="pageno"></div></div>
 <div id="results"></div>
 <div id="legend"></div>
 <div id="hud">connecting…</div>

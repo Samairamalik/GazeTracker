@@ -108,11 +108,14 @@ const Reader = {
     if (this.cur >= this.pages.length) {
       this.state = "done";
       $("column").innerHTML = "";
+      $("pageno").textContent = "";
       send({ type: "reading_end" });
       showMsg("Analysing…");
       return;
     }
     const lines = this.render(this.cur);
+    const last = this.cur === this.pages.length - 1;
+    $("pageno").textContent = `Page ${this.cur + 1} of ${this.pages.length} · Space = ${last ? "finish" : "next page"}`;
     send({ type: "page", page: this.cur, n_pages: this.pages.length, lines,
            line_pitch: this.pitch(), font_px: this.cfg.font_px });
   },
