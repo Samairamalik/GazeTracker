@@ -1,0 +1,53 @@
+{
+ "passage": "alice_passage3",
+ "questions": [
+  {
+   "id": "p3q1",
+   "para_id": 0,
+   "text": "According to the Dormouse, what did they draw?",
+   "options": [
+    "Pictures of the Hatter",
+    "Everything that begins with an M",
+    "Maps of the garden",
+    "Everything that begins with a T"
+   ],
+   "answer": 1
+  },
+  {
+   "id": "p3q2",
+   "para_id": 1,
+   "text": "How was the Dormouse woken up?",
+   "options": [
+    "The March Hare shouted at it",
+    "Alice poured tea on it",
+    "The Hatter pinched it",
+    "A clock struck"
+   ],
+   "answer": 2
+  },
+  {
+   "id": "p3q3",
+   "para_id": 1,
+   "text": "The Dormouse asked if Alice had ever seen a drawing of a ...",
+   "options": [
+    "moon",
+    "memory",
+    "mouse-trap",
+    "muchness"
+   ],
+   "answer": 3
+  },
+  {
+   "id": "p3q4",
+   "para_id": 2,
+   "text": "What were the others doing the last time Alice saw them?",
+   "options": [
+    "Trying to put the Dormouse into the teapot",
+    "Calling after her",
+    "Pouring more tea",
+    "Singing a song"
+   ],
+   "answer": 0
+  }
+ ]
+}

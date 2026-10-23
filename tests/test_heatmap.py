@@ -82,3 +82,9 @@ def test_analysis_uses_primary_calibration(tmp_path):
     other = dict(ev[i], primary=False, rms_y=500.0, variant="B")
     r = analyze_session(ev[:i + 1] + [other] + ev[i + 1:], CFG)
     assert r["rms_y"] == 20.0 and r["granularity"] == "line"
+
+
+def test_meta_written_after_reading_does_not_change_result(tmp_path):
+    ev = make_log(tmp_path)
+    late = ev + [{"type": "meta", "screen_w": 800, "screen_h": 500, "dpr": 1, "source": "camera"}]
+    assert dumps(analyze_session(late, CFG)) == dumps(analyze_session(ev, CFG))

@@ -110,7 +110,7 @@ const Reader = {
       $("column").innerHTML = "";
       $("pageno").textContent = "";
       send({ type: "reading_end" });
-      showMsg("Analysing…");
+      if (!Quiz.start()) showMsg("Analysing…");
       return;
     }
     const lines = this.render(this.cur);
@@ -127,9 +127,12 @@ const Reader = {
   },
 };
 
+let lastPageAt = 0;   // ignore Space for 1 s after a page appears, so a double press can't skip a page
 addEventListener("keydown", (e) => {
   if (e.key !== " ") return;
   e.preventDefault();
+  if (performance.now() - lastPageAt < 1000) return;
+  lastPageAt = performance.now();
   if (Reader.state === "ready") Reader.start();
   else if (Reader.state === "reading") Reader.next();
 });

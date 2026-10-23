@@ -1,0 +1,53 @@
+{
+ "passage": "alice_passage1",
+ "questions": [
+  {
+   "id": "p1q1",
+   "para_id": 0,
+   "text": "What did the Caterpillar take out of its mouth before speaking?",
+   "options": [
+    "A leaf",
+    "A hookah",
+    "A mushroom",
+    "A teacup"
+   ],
+   "answer": 1
+  },
+  {
+   "id": "p1q2",
+   "para_id": 0,
+   "text": "What did Alice say she did know about herself?",
+   "options": [
+    "Who she was when she got up that morning",
+    "Her own name and age",
+    "The way back home",
+    "How tall she was"
+   ],
+   "answer": 0
+  },
+  {
+   "id": "p1q3",
+   "para_id": 1,
+   "text": "Why did Alice say she could not explain herself?",
+   "options": [
+    "She had forgotten the question",
+    "She was too tired",
+    "Because she was not herself",
+    "The Caterpillar was too rude"
+   ],
+   "answer": 2
+  },
+  {
+   "id": "p1q4",
+   "para_id": 2,
+   "text": "What did Alice say the Caterpillar would turn into some day?",
+   "options": [
+    "A moth",
+    "A dragon",
+    "A mushroom",
+    "A chrysalis, and then a butterfly"
+   ],
+   "answer": 3
+  }
+ ]
+}

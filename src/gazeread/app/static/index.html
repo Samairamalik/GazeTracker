@@ -37,6 +37,14 @@
   #legend { position: fixed; left: 8px; bottom: 8px; padding: 6px 10px; border-radius: 6px;
             background: rgba(0, 0, 0, .7); color: #fff; font: 13px ui-monospace, monospace; white-space: pre; }
   #legend:empty { display: none; }
+  #quiz { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+          background: #ebe7dd; font: 26px Georgia, "Times New Roman", serif; color: #1a1a1a; }
+  #quiz .qbox { max-width: 900px; padding: 0 24px; }
+  #quiz .qnum { font: 16px system-ui, sans-serif; color: #6b6a64; margin-bottom: 12px; }
+  #quiz .qtext { font-weight: bold; margin-bottom: 20px; }
+  #quiz .qopt { margin: 10px 0; }
+  #quiz .qopt b { display: inline-block; width: 1.6em; color: #2a78d6; }
+  #quiz .qhint { font: 15px system-ui, sans-serif; color: #6b6a64; margin-top: 18px; }
 </style>
 </head>
 <body>
@@ -51,10 +59,12 @@
 <div id="msg"></div>
 <div id="reader"><div id="column"></div><div id="pageno"></div></div>
 <div id="results"></div>
+<div id="quiz"></div>
 <div id="legend"></div>
 <div id="hud">connecting…</div>
 <script src="calibrate.js"></script>
 <script src="reader.js"></script>
 <script src="heatmap.js"></script>
+<script src="quiz.js"></script>
 </body>
 </html>

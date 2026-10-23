@@ -73,6 +73,7 @@ function renderHud(status) {
 ws.onmessage = (ev) => {
   const m = JSON.parse(ev.data);
   Reader.handle(m);
+  Quiz.handle(m);
   Heatmap.handle(m);
   if (m.type === "dot") showDot(m);
   else if (m.type === "calib_done") {

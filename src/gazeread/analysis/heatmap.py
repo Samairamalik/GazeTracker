@@ -48,7 +48,8 @@ def analyze_session(events: list[dict], cfg: dict) -> dict:
     if not calib:
         raise ValueError("no successful calibration in this log")
     c = calib[-1]
-    meta = [e for e in events if e["type"] == "meta"][-1]
+    first = next(i for i, e in enumerate(events) if e is reading[0])
+    meta = [e for e in events[:first] if e["type"] == "meta"][-1]       # in force when the reading began
     gaze = [e for e in events if e["type"] == "gaze" and t_start <= e["t"] <= t_end]
     gt = np.array([g["t"] for g in gaze])
     gx = np.array([np.nan if g["x"] is None else g["x"] for g in gaze])

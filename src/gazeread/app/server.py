@@ -36,6 +36,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 
 from gazeread.analysis.heatmap import analyze_session, export
+from gazeread.app.quiz import load_questions, public_questions, score
 from gazeread.app.session import SessionLog, read_events
 from gazeread.gaze.backend_landmark import FEATURE_NAMES, FEATURE_SETS, LandmarkBackend
 from gazeread.gaze.backend_l2cs import L2CS_NAMES, L2CS_SETS
@@ -346,7 +347,9 @@ def create_app(p: Pipeline, cfg_hash: str) -> FastAPI:
                 await ws.send_json(msg)
 
         send_task, calib_task = asyncio.create_task(sender()), None
-        await q.put({"type": "config", "reading": p.cfg["reading"], "session": p.session.id})
+        questions = load_questions(STATIC / "texts", p.cfg["reading"]["text"])
+        await q.put({"type": "config", "reading": p.cfg["reading"], "session": p.session.id,
+                     "questions": public_questions(questions)})
         try:
             while True:
                 msg = await ws.receive_json()
@@ -354,6 +357,11 @@ def create_app(p: Pipeline, cfg_hash: str) -> FastAPI:
                     p.session.write("page", page=msg["page"], t_on=time.monotonic(),
                                     lines=msg["lines"], line_pitch=msg["line_pitch"],
                                     font_px=msg["font_px"], n_pages=msg["n_pages"])
+                elif msg.get("type") == "answer":          # scored here; the page has no answer key
+                    para_id, correct = score(questions, msg["question_id"], msg["response"])
+                    p.session.write("answer", t=time.monotonic(), passage=p.cfg["reading"]["text"],
+                                    question_id=msg["question_id"], para_id=para_id,
+                                    response=int(msg["response"]), correct=correct)
                 elif msg.get("type") == "reading_end":
                     t_end = time.monotonic()
                     p.session.write("reading_end", t=t_end)
@@ -370,7 +378,8 @@ def create_app(p: Pipeline, cfg_hash: str) -> FastAPI:
                                     n_points=p.cfg["calib"]["n_points"],
                                     features=p.cfg["calib"]["features"], backend=p.primary,
                                     compare=p.cfg["gaze"]["compare"],
-                                    variants=[v.name for v in p.variants])
+                                    variants=[v.name for v in p.variants],
+                                    text=p.cfg["reading"]["text"], skim=p.cfg["reading"]["skim"])
                     if calib_task:
                         calib_task.cancel()
                     calib_task = asyncio.create_task(run_calibration(p, q))
@@ -396,6 +405,8 @@ def main() -> None:
     ap.add_argument("--features", choices=sorted(FEATURE_SETS))
     ap.add_argument("--backend", choices=["landmark", "l2cs"])
     ap.add_argument("--compare", action="store_true", help="run both backends; calibrate A, B, B+pose")
+    ap.add_argument("--text", help="passage file name in static/texts (without .txt)")
+    ap.add_argument("--skim", action="store_true", help="mark this session's reading as deliberately skimmed")
     ap.add_argument("--port", type=int)
     ap.add_argument("--open", action="store_true", help="open the page in the default browser")
     args = ap.parse_args()
@@ -408,6 +419,9 @@ def main() -> None:
         cfg["calib"]["n_points"] = args.n_points
     if args.features:
         cfg["calib"]["features"] = args.features
+    if args.text:
+        cfg["reading"]["text"] = args.text
+    cfg["reading"]["skim"] = bool(args.skim)
     if args.backend:
         cfg["gaze"]["backend"] = args.backend
     if args.compare:

@@ -1,0 +1,4 @@
+session,passage,skim,source,sigma_px,rms_y,granularity,reading_s,n_questions,n_correct
+20261023-103202,alice_passage1,0,camera,262.6985,164.5536,paragraph,38.7,4,2
+20261023-103416,alice_passage2,1,camera,291.1579,185.119,paragraph,50.0,5,2
+20261023-103620,alice_passage3,0,camera,209.3475,197.1092,paragraph,13.6,4,1

@@ -1,0 +1,65 @@
+{
+ "passage": "alice_passage2",
+ "questions": [
+  {
+   "id": "p2q1",
+   "para_id": 0,
+   "text": "What was the Duchess doing in the kitchen?",
+   "options": [
+    "Stirring the soup",
+    "Nursing a baby",
+    "Whistling",
+    "Reading a book"
+   ],
+   "answer": 1
+  },
+  {
+   "id": "p2q2",
+   "para_id": 0,
+   "text": "What was the cook stirring?",
+   "options": [
+    "A large cauldron of soup",
+    "A pot of tea",
+    "A pan of tarts",
+    "A bowl of pepper"
+   ],
+   "answer": 0
+  },
+  {
+   "id": "p2q3",
+   "para_id": 1,
+   "text": "Which two did NOT sneeze?",
+   "options": [
+    "The Duchess and the baby",
+    "Alice and the cat",
+    "The cook and a large cat",
+    "The Footman and the cook"
+   ],
+   "answer": 2
+  },
+  {
+   "id": "p2q4",
+   "para_id": 2,
+   "text": "What kind of cat did the Duchess say it was?",
+   "options": [
+    "A Persian cat",
+    "A tabby cat",
+    "A March cat",
+    "A Cheshire cat"
+   ],
+   "answer": 3
+  },
+  {
+   "id": "p2q5",
+   "para_id": 2,
+   "text": "Who was the word \"Pig!\" addressed to?",
+   "options": [
+    "The baby",
+    "Alice",
+    "The cook",
+    "The cat"
+   ],
+   "answer": 0
+  }
+ ]
+}

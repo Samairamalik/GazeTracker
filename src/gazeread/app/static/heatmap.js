@@ -4,6 +4,7 @@ const Heatmap = {
   result: null, page: 0, view: "para", source: "fixations",
 
   handle(m) {
+    if (m.type === "analysis" && Quiz.active) { Quiz.pending = m; return; }   // after the questions
     if (m.type === "analysis") {
       this.result = m.result;
       this.dir = m.dir;

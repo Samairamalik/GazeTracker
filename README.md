@@ -66,6 +66,9 @@ heatmap views **L** line, **P** paragraph, **S** scanpath (coarse), **F** fixati
 **←/→** pages. **C** recalibrates, **H** hides the HUD. Exports land in `sessions/<id>/`.
 
 ```bash
+make app TEXT=alice_passage1           # another passage (src/gazeread/app/static/texts/<name>.txt);
+                                       # passages with <name>.questions.json end with a quiz (keys 1–4)
+make app TEXT=alice_passage2 SKIM=1    # mark the session as a deliberately skimmed reading
 make replay SESSION=sessions/<id>                      # offline heatmap; checks equality with the live one
 make compare SESSIONS="sessions/<id1> sessions/<id2>"  # A vs B vs B+pose from compare-mode sessions
 ```
@@ -92,6 +95,10 @@ committed copies, so the simulation itself is reproducible anywhere.
 
 - **Simulation and design guidelines (spec 7.3):** [`results/sim_summary.md`](results/sim_summary.md)
 - **MPIIFaceGaze, leave-one-person-out (spec 7.1):** [`results/m5_summary.md`](results/m5_summary.md)
+- **Human check (spec 7.4), single reader, illustrative only:** protocol in
+  [`docs/human_check.md`](docs/human_check.md); results in [`results/m6_summary.md`](results/m6_summary.md)
+  (`make human-check`). Run once with one reader; one page of passage 3 was skipped by an
+  accidental double key press and its paragraphs are excluded (see the summary).
 - Tables: [`results/tables/`](results/tables/); figures: [`results/figures/`](results/figures/)
 
 ## Known limitations

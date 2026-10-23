@@ -37,7 +37,7 @@ reading:
   line_height: 2.2     # line pitch = font_px * line_height = 66 px
   column_ch: 60        # column width in characters
   para_gap_lines: 1.0  # extra space between paragraphs, in line pitches
-  margin_y_px: 60
+  margin_y_px: 40         # 40 fits two 6-line paragraphs per page on 1512x945 (M4 guideline)
   show_cursor: false   # a visible gaze cursor changes how people read
 analysis:
   mapping_mode: soft   # soft (Gaussian in y, sigma = calibration rms_y) or hard (nearest line)

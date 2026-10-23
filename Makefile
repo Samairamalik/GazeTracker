@@ -6,9 +6,10 @@ L2CS_FILE := models/l2cs_gaze360_resnet50.safetensors
 L2CS_SHA256 := 75405bdc01f7086b3887280fe50c28a14bc62463a53fa749781e4a3cf98eca0e
 # Optional overrides for `make app`, e.g. make app N_POINTS=16 FEATURES=iris
 APP_ARGS := $(if $(SOURCE),--source $(SOURCE)) $(if $(N_POINTS),--n-points $(N_POINTS)) $(if $(FEATURES),--features $(FEATURES)) \
-            $(if $(BACKEND),--backend $(BACKEND)) $(if $(COMPARE),--compare)
+            $(if $(BACKEND),--backend $(BACKEND)) $(if $(COMPARE),--compare) \
+            $(if $(TEXT),--text $(TEXT)) $(if $(SKIM),--skim)
 
-.PHONY: setup weights check test debug-landmarks app replay compare sim results measured-sigma extract-mpii eval-lopo
+.PHONY: human-check setup weights check test debug-landmarks app replay compare sim results measured-sigma extract-mpii eval-lopo
 
 setup:
 	test -d .venv || uv venv --python 3.11 .venv
@@ -58,3 +59,7 @@ eval-lopo: extract-mpii
 	PYTHONPATH=src $(PY) -m gazeread.eval.lopo
 
 results: sim eval-lopo
+
+# Human check (spec 7.4, single reader): tables from sessions that contain quiz answers
+human-check:
+	PYTHONPATH=src $(PY) -m gazeread.eval.human_check $(SESSIONS)
