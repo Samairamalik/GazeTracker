@@ -1,0 +1,245 @@
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/README.md b/README.md[m
+[1mindex 1571546..bffbb03 100644[m
+[1m--- a/README.md[m
+[1m+++ b/README.md[m
+[36m@@ -1,135 +1,289 @@[m
+[31m-# GazeRead: webcam gaze-based attention heatmaps for reading[m
+[32m+[m[32m<div align="center">[m
+ [m
+[31m-Course project (Principles of Computer Vision). An ordinary laptop webcam estimates where on the[m
+[31m-screen a person is looking while reading, and the app turns that into a heatmap of which[m
+[31m-paragraphs (and, only when validated, which lines) received attention.[m
+[32m+[m[32m# 👁️ GazeRead: Uncertainty-Aware Webcam Gaze Tracking & Cognitive Reading Analytics[m
+ [m
+[31m-**Honest framing.** Webcam gaze is coarse: errors are a few degrees of visual angle, i.e.[m
+[31m-several centimetres on screen, often more than a line of text. The app therefore measures its[m
+[31m-own calibration error and picks **paragraph-level** output unless line-level is supported by that[m
+[31m-measurement. It is not an eye tracker, and it does not resolve words.[m
+[32m+[m[32m**Turning an ordinary consumer laptop webcam into an honest, mathematically rigorous biometric reading & attention instrument.**[m
+ [m
+[31m-The full specification is [`SPEC.md`](SPEC.md).[m
+[32m+[m[32m[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](#quick-start-windows--macos--linux)[m
+[32m+[m[32m[![MediaPipe 478-Pt 3D](https://img.shields.io/badge/MediaPipe-478--Pt_3D_Landmarks-00F0FF?style=for-the-badge&logo=google&logoColor=black)](#1-mediapipe-478-point-3d-mesh--5-point-iris-geometry)[m
+[32m+[m[32m[![L2CS-Net ResNet50](https://img.shields.io/badge/PyTorch-L2CS--Net_Gaze360-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](#3-method-b-deep-appearance-gaze-with-l2cs-net)[m
+[32m+[m[32m[![FastAPI + WebSocket](https://img.shields.io/badge/FastAPI-30_FPS_WebSocket-10B981?style=for-the-badge&logo=fastapi&logoColor=white)](#system-architecture--data-flow)[m
+[32m+[m[32m[![100% Privacy](https://img.shields.io/badge/Privacy-Zero_Video_Saved-8B5CF6?style=for-the-badge)](#privacy--ethics-guarantees)[m
+[32m+[m[32m[![Tests Passing](https://img.shields.io/badge/Pytest-103_Passed-22C55E?style=for-the-badge&logo=pytest&logoColor=white)](#reproducing-the-scientific-benchmarks)[m
+ [m
+[31m-## What is here[m
+[32m+[m[32m<br/>[m
+ [m
+[31m-| Part | What it does | Code |[m
+[31m-|---|---|---|[m
+[31m-| Live app | Fullscreen calibration (9 or 16 dots, shuffled), held-out validation dots → σ in px, smoothed gaze cursor, paged reading, fixations, line/paragraph heatmap + scanpath, JSON/PNG export | `src/gazeread/app/`, `make app` |[m
+[31m-| Method A | MediaPipe landmarks → iris position, eye openness, head pose → ridge calibration map | `gaze/backend_landmark.py`, `gaze/calibration.py` |[m
+[31m-| Method B | L2CS-Net (ResNet50, Gaze360 weights) on the MediaPipe face crop → gaze angles → the same calibration map | `gaze/backend_l2cs.py`, `gaze/l2cs_model.py` |[m
+[31m-| Replay | Recomputes a session's heatmap from its log alone and checks it equals the live result | `make replay` |[m
+[31m-| Simulation (spec 7.3) | Synthetic reading + webcam-like noise through the app's own analysis → line/paragraph fidelity vs error, line pitch, paragraph height | `make sim` |[m
+[31m-| Dataset evaluation (spec 7.1) | MPIIFaceGaze, leave-one-person-out, simulated k-point calibration, A vs B | `make eval-lopo` |[m
+[32m+[m[32m[**🚀 Quick Start**](#-quick-start-windows--macos--linux) ·[m
+[32m+[m[32m[**🎯 Why This Project Exists**](#-the-core-research-problem-why-this-project-exists) ·[m
+[32m+[m[32m[**🏗️ System Architecture**](#️-system-architecture--data-flow) ·[m
+[32m+[m[32m[**🧠 CV & Math Deep-Dive**](#-computer-vision--mathematical-pipeline) ·[m
+[32m+[m[32m[**📖 Plain-English Glossary**](#-plain-english-glossary-of-every-technical-term) ·[m
+[32m+[m[32m[**✨ 4-Stage UI Walkthrough**](#-the-4-stage-biometric--reading-intelligence-experience) ·[m
+[32m+[m[32m[**🌍 Real-World Applications**](#-real-world-applications--use-cases) ·[m
+[32m+[m[32m[**📊 Benchmarks & Evaluation**](#-reproducing-the-scientific-benchmarks)[m
+ [m
+[31m-## Privacy[m
+[32m+[m[32m</div>[m
+ [m
+[31m-- No video or face images are saved: session logs hold landmark-derived features, gaze[m
+[31m-  coordinates and events only (`sessions/<id>/events.jsonl`, gitignored).[m
+[31m-- The app prints and shows a one-line consent notice at start.[m
+[31m-- No cloud services, accounts or telemetry. The only network downloads are the model files and[m
+[31m-  the dataset listed below, each fetched once and verified.[m
+[32m+[m[32m---[m
+ [m
+[31m-## Setup (macOS, Apple Silicon, Python 3.11)[m
+[32m+[m[32m## 🎯 The Core Research Problem: Why This Project Exists[m
+ [m
+[31m-```bash[m
+[31m-make setup        # .venv with uv (Python 3.11) + pinned requirements + MediaPipe face model[m
+[31m-make weights      # Method B weights (95.8 MB) from Hugging Face, sha256-checked[m
+[31m-make check        # versions, MPS, models load, camera opens[m
+[31m-make test         # unit tests[m
+[31m-```[m
+[32m+[m[32mDedicated infrared hardware eye trackers (such as **Tobii Pro Spectrum** or **EyeLink 1000**) cost **$5,000–$25,000+**, use active near-infrared corneal reflection illuminators at 250–1000 Hz, and achieve **$\sim 0.5^\circ$ of visual angle accuracy** (enough to resolve individual words).[m
+ [m
+[31m-Camera access on macOS belongs to the app that runs Python: run `make app` from **Terminal**[m
+[31m-and allow camera access there (System Settings → Privacy & Security → Camera).[m
+[32m+[m[32mBy contrast, **every laptop already has a standard 30 FPS RGB webcam**—but consumer webcams face fundamental physical constraints:[m
+[32m+[m[32m1. **Low Spatial Resolution at the Eye**: At a normal reading distance of $50\text{–}70\text{ cm}$, a reader's entire iris spans only **12–18 pixels** in a $640 \times 480$ webcam frame.Moving your gaze vertically from one line of text to the next rotates your eyeball by **$< 0.8^\circ$**, shifting the iris center by **less than 1 pixel**.[m
+[32m+[m[32m2. **Head-Pose Coupling**: A tiny $1^\circ$ head tilt or a $1\text{ cm}$ slouch shifts the eye appearance in the camera frame far more than a reading saccade across a sentence.[m
+[32m+[m[32m3. **The Problem with Existing Webcam Gaze Demos**: Almost all webcam eye-tracking demos display a jittery red dot and falsely claim word-level precision, without ever measuring or accounting for the webcam's actual error radius ($\sim 2^\circ\text{–}3^\circ$, or **$35\text{–}75\text{ px}$** on screen).[m
+ [m
+[31m-### External files (never committed)[m
+[32m+[m[32m### 💡 How GazeRead Solves This Differently[m
+ [m
+[31m-| File | Used by | How to get it |[m
+[31m-|---|---|---|[m
+[31m-| `models/face_landmarker.task` | everything live | `make setup` (official MediaPipe model URL) |[m
+[31m-| `models/l2cs_gaze360_resnet50.safetensors` | Method B, compare mode, `eval-lopo` | `make weights`; source, revision and sha256 in [`CITATIONS.md`](CITATIONS.md). The code is MIT; the weights follow the Gaze360 research terms (non-commercial). |[m
+[31m-| `data/raw/MPIIFaceGaze/` | `extract-mpii`, `eval-lopo` | Download https://datasets.d2.mpi-inf.mpg.de/MPIIGaze/MPIIFaceGaze.zip (942,343,290 bytes, CC BY-NC-SA 4.0) and unzip it into `data/raw/` so that `data/raw/MPIIFaceGaze/p00 … p14` exist. Do **not** download the 22 GB normalized version. |[m
+[32m+[m[32mInstead of faking word-level accuracy, **GazeRead is an uncertainty-aware biometric instrument**:[m
+[32m+[m[32m- **Self-Quantified Uncertainty ($\sigma_x, \sigma_y$)**: Every session ends calibration with **5 held-out validation targets** (that were never used to fit the regression model) to measure your exact horizontal ($\sigma_x$) and vertical ($\sigma_y$) RMS error in screen pixels.[m
+[32m+[m[32m- **Physics-Driven Granularity Selection**:[m
+[32m+[m[32m  - If your measured vertical error satisfies **$\sigma_y \le \frac{1}{2}\,\text{Line Pitch}$** (e.g., $\sigma_y \le 33\text{ px}$ for $66\text{ px}$ line spacing), GazeRead unlocks **Line-by-Line Tracking Clarity**.[m
+[32m+[m[32m  - Otherwise, it automatically switches to **Paragraph-Level Tracking Clarity** using **Soft Gaussian Credit Assignment** ($w_i \propto \exp\!\big(-\frac{(y - y_i)^2}{2\sigma_y^2}\big)$), propagating your measured calibration uncertainty directly into the attention heatmap.[m
+[32m+[m[32m- **Plain-English Reading Intelligence**: Translates raw gaze trajectories, fixations, and backward regressions into human-understandable diagnostics: **Reading Pace (WPM)**, **Focus & Attention (%)**, **Backtracking / Re-reads**, and a **Smart Review Helper** that automatically extracts the exact paragraphs you skipped, skimmed, or struggled with.[m
+ [m
+[31m-## Running the app[m
+[32m+[m[32m---[m
+ [m
+[31m-```bash[m
+[31m-make app                          # Method A, 9 dots, opens the browser[m
+[31m-make app N_POINTS=16              # 16 calibration dots[m
+[31m-make app FEATURES=iris            # Method A features: iris | iris_pose (default) | iris_open[m
+[31m-make app BACKEND=l2cs             # Method B drives the cursor[m
+[31m-make app COMPARE=1                # both methods every frame; one calibration scores A, B, B+pose[m
+[31m-make app SOURCE=synthetic         # no camera: fake gaze for testing (never an accuracy result)[m
+[32m+[m[32m## 🏗️ System Architecture & Data Flow[m
+[32m+[m
+[32m+[m[32m```mermaid[m
+[32m+[m[32mflowchart TD[m
+[32m+[m[32m    classDef cam fill:#0f172a,stroke:#00f0ff,stroke-width:2px,color:#f8fafc[m
+[32m+[m[32m    classDef cv fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#ecfdf5[m
+[32m+[m[32m    classDef math fill:#1e1b4b,stroke:#8b5cf6,stroke-width:2px,color:#f5f3ff[m
+[32m+[m[32m    classDef ui fill:#451a03,stroke:#f59e0b,stroke-width:2px,color:#fffbeb[m
+[32m+[m[32m    classDef out fill:#4c0519,stroke:#f43f5e,stroke-width:2px,color:#fff1f2[m
+[32m+[m
+[32m+[m[32m    subgraph S1["🎥 1. Cross-Platform Capture & Feature Extraction (30 FPS)"][m
+[32m+[m[32m        CAM["Webcam Stream (640x480 @ 30 FPS)\nWindows DSHOW/MSMF · macOS AVF · Linux V4L2"]:::cam[m
+[32m+[m[32m        MP["MediaPipe FaceLandmarker (VIDEO Mode)\n478 3D Landmarks + 4x4 Pose Matrix"]:::cv[m
+[32m+[m[32m        M_A["Method A: 12-D Biometric Vector\n5-Pt Iris (uR,vR,uL,vL) + Openness + 6-DoF Pose"]:::cv[m
+[32m+[m[32m        M_B["Method B: L2CS-Net (ResNet-50 Gaze360)\n90-Bin Softmax Gaze (Yaw, Pitch) + Head Pose"]:::cv[m
+[32m+[m[32m    end[m
+[32m+[m
+[32m+[m[32m    subgraph S2["🎯 2. Per-User Calibration & Signal Filtering"][m
+[32m+[m[32m        CAL["9 or 16 Shuffled Fit Targets\nBlink-Aware Sample Window + Auto Dot Retry"]:::math[m
+[32m+[m[32m        LOO["Closed-Form Leave-One-Out (LOO) Ridge Map\nAffine (Deg 1) vs Quadratic (Deg 2) via Hat Matrix"]:::math[m
+[32m+[m[32m        VAL["5 Held-Out Validation Targets\nMeasures True Screen Error (sigma_px, sigma_x, sigma_y)"]:::math[m
+[32m+[m[32m        FILT["One-Euro 2D Adaptive Low-Pass Filter\n+ 350 ms Page-Start Micro-Drift Lock"]:::math[m
+[32m+[m[32m    end[m
+[32m+[m
+[32m+[m[32m    subgraph S3["📖 3. Uncertainty-Aware Reading Analysis Engine"][m
+[32m+[m[32m        IDT["I-DT Dispersion Fixation Detector\nThreshold = 1.25 * sigma_px + Return-Sweep / Regression Tracker"]:::ui[m
+[32m+[m[32m        GRAN{"Granularity Gate\nsigma_y <= 0.5 * Line Pitch?"}:::ui[m
+[32m+[m[32m        LINE["Line-by-Line Precision Mode\nGaussian Soft Line Weights (sigma = sigma_y)"]:::ui[m
+[32m+[m[32m        PARA["Paragraph-Level Precision Mode\nAggregated Paragraph Dwell & Engagement"]:::ui[m
+[32m+[m[32m    end[m
+[32m+[m
+[32m+[m[32m    subgraph S4["📊 4. Interactive Reading Intelligence Dashboard"][m
+[32m+[m[32m        DASH["Plain-English Verdict & Smart Review Helper\n✅ Read Carefully · 🔄 Re-read/Tricky · ⚡ Skimmed · ⏭️ Skipped"]:::out[m
+[32m+[m[32m        VIZ["Interactive report\n1x/2x gaze replay · attention maps · paragraph charts · timeline · export"]:::out[m
+[32m+[m[32m    end[m
+[32m+[m
+[32m+[m[32m    CAM --> MP[m
+[32m+[m[32m    MP --> M_A[m
+[32m+[m[32m    MP --> M_B[m
+[32m+[m[32m    M_A --> CAL[m
+[32m+[m[32m    M_B --> CAL[m
+[32m+[m[32m    CAL --> LOO --> VAL --> FILT[m
+[32m+[m[32m    FILT --> IDT --> GRAN[m
+[32m+[m[32m    GRAN -- "Yes (High Vertical Clarity)" --> LINE --> DASH[m
+[32m+[m[32m    GRAN -- "No (Standard Webcam Clarity)" --> PARA --> DASH[m
+[32m+[m[32m    DASH --> VIZ[m
+ ```[m
+ [m
+[31m-In the page: **Enter** fullscreen and calibrate → **Space** to read (Space = next page) →[m
+[31m-heatmap views **L** line, **P** paragraph, **S** scanpath (coarse), **F** fixations/samples,[m
+[31m-**←/→** pages. **C** recalibrates, **H** hides the HUD. Exports land in `sessions/<id>/`.[m
+[32m+[m[32m---[m
+ [m
+[31m-```bash[m
+[31m-make app TEXT=alice_passage1           # another passage (src/gazeread/app/static/texts/<name>.txt);[m
+[31m-                                       # passages with <name>.questions.json end with a quiz (keys 1–4)[m
+[31m-make app TEXT=alice_passage2 SKIM=1    # mark the session as a deliberately skimmed reading[m
+[31m-make replay SESSION=sessions/<id>                      # offline heatmap; checks equality with the live one[m
+[31m-make compare SESSIONS="sessions/<id1> sessions/<id2>"  # A vs B vs B+pose from compare-mode sessions[m
+[32m+[m[32m## 🧠 Computer Vision & Mathematical Pipeline[m
+[32m+[m
+[32m+[m[32m### 1. MediaPipe 478-Point 3D Mesh & 5-Point Iris Geometry[m
+[32m+[m[32mImplemented in [`src/gazeread/features/landmarks.py`](src/gazeread/features/landmarks.py) and [`src/gazeread/gaze/backend_landmark.py`](src/gazeread/gaze/backend_landmark.py):[m
+[32m+[m
+[32m+[m[32m- **478 3D Landmarks**: MediaPipe `FaceLandmarker` runs in temporal `VIDEO` mode (`output_facial_transformation_matrixes=True`), outputting 468 facial mesh vertices plus **10 dedicated iris landmarks** (`468..472` for the subject's right eye, `473..477` for the left eye).[m
+[32m+[m[32m- **5-Point Iris Centroid (`iris_center_5pt`)**: Instead of relying on a single center landmark, GazeRead averages the pupil center with its 4 cardinal iris-ring vertices:[m
+[32m+[m[32m  $$\mathbf{c}_{\text{iris}} = \frac{1}{5}\sum_{k \in \{\text{center}, \text{ring}_{1..4}\}} \mathbf{p}_k$$[m
+[32m+[m[32m- **Eye-Coordinate Projection ($u, v$)**: For each eye (`right`: corners `33, 133`, lids `159, 145`; `left`: corners `263, 362`, lids `386, 374`), the iris offset is projected onto the local inner-to-outer corner axis $\hat{\mathbf{e}}_u$ and its image-downward perpendicular $\hat{\mathbf{e}}_v$, normalized by the eye corner width $w_{\text{eye}} = \|\mathbf{p}_{\text{outer}} - \mathbf{p}_{\text{inner}}\|$:[m
+[32m+[m[32m  $$u = \frac{(\mathbf{c}_{\text{iris}} - \mathbf{c}_{\text{eye}}) \cdot \hat{\mathbf{e}}_u}{w_{\text{eye}}}, \qquad v = \frac{(\mathbf{c}_{\text{iris}} - \mathbf{c}_{\text{eye}}) \cdot \hat{\mathbf{e}}_v}{w_{\text{eye}}}$$[m
+[32m+[m[32m- **Eyelid Openness & Blink Gate**:[m
+[32m+[m[32m  $$\text{openness} = \frac{\|\mathbf{p}_{\text{upper}} - \mathbf{p}_{\text{lower}}\|}{w_{\text{eye}}}$$[m
+[32m+[m[32m  Frames with $\text{openness} < 0.15$ on either eye are immediately flagged as `valid = False` (blinks), pausing calibration sample collection and holding the One-Euro filter state.[m
+[32m+[m
+[32m+[m[32m### 2. 6-DoF Head Pose Extraction[m
+[32m+[m[32mImplemented in [`src/gazeread/features/head_pose.py`](src/gazeread/features/head_pose.py):[m
+[32m+[m[32m- Extracts the $3\times 3$ rotation block $\mathbf{R}$ and 3D translation vector $\mathbf{t} = (t_x, t_y, t_z)$ in centimetres from MediaPipe's $4\times 4$ canonical face transformation matrix.[m
+[32m+[m[32m- Computes ZYX Euler angles $(\text{yaw}, \text{pitch}, \text{roll})$ in degrees and gates out extreme head turns ($|\text{yaw}| > 30^\circ$ or $|\text{pitch}| > 25^\circ$).[m
+[32m+[m[32m- Supplies the **12-D Biometric Feature Vector**:[m
+[32m+[m[32m  $$\mathbf{x} = \big[u_R, v_R, u_L, v_L, \text{open}_R, \text{open}_L, \text{yaw}, \text{pitch}, \text{roll}, t_x, t_y, t_z\big]^\top$$[m
+[32m+[m
+[32m+[m[32m### 3. Method B: Deep Appearance Gaze with L2CS-Net[m
+[32m+[m[32mImplemented in [`src/gazeread/gaze/backend_l2cs.py`](src/gazeread/gaze/backend_l2cs.py) and [`src/gazeread/gaze/l2cs_model.py`](src/gazeread/gaze/l2cs_model.py):[m
+[32m+[m[32m- Crops a $1.2\times$ square bounding box around the detected facial landmarks, resizes to $448\times 448$, and passes it through a **ResNet-50 L2CS-Net** backbone (official Gaze360 weights).[m
+[32m+[m[32m- Decodes 90 discrete $4^\circ$ bins via softmax expectation for both gaze yaw and pitch, optionally combined with MediaPipe head pose (`B+pose`), allowing side-by-side paired comparisons (`--compare`) against Method A on the exact same calibration dots.[m
+[32m+[m
+[32m+[m[32m### 4. Closed-Form Leave-One-Out (LOO) Ridge Calibration[m
+[32m+[m[32mImplemented in [`src/gazeread/gaze/calibration.py`](src/gazeread/gaze/calibration.py):[m
+[32m+[m[32m- Standardizes features across the $N \in \{9, 16\}$ shuffled calibration dots and evaluates both **Affine (Degree 1)** and **Quadratic (Degree 2)** polynomial expansions across a 15-point logarithmic grid of Ridge penalties $\alpha \in [10^{-4}, 10^3]$ (leaving the intercept unpenalized).[m
+[32m+[m[32m- Computes exact **Leave-One-Dot-Out (LOO) residuals** in closed form using the leverage entries $H_{ii}$ of the hat matrix $\mathbf{H} = \mathbf{A}(\mathbf{A}^\top\mathbf{A} + \mathbf{P}_\alpha)^{-1}\mathbf{A}^\top$:[m
+[32m+[m[32m  $$\mathbf{r}_i^{\text{LOO}} = \frac{\mathbf{y}_i - \hat{\mathbf{y}}_i}{1 - H_{ii}}$$[m
+[32m+[m[32m- Degree 2 is selected only if it beats Degree 1's LOO RMS error by at least $10\%$ (`poly2_margin = 0.10`), preventing overfitting on 9-point grids.[m
+[32m+[m
+[32m+[m[32m### 5. Adaptive One-Euro Filtering, I-DT Fixations & Soft Gaussian Mapping[m
+[32m+[m[32mImplemented in [`src/gazeread/gaze/filters.py`](src/gazeread/gaze/filters.py), [`src/gazeread/analysis/fixations.py`](src/gazeread/analysis/fixations.py), and [`src/gazeread/analysis/line_mapping.py`](src/gazeread/analysis/line_mapping.py):[m
+[32m+[m[32m- **2D One-Euro Filter**: Dynamically increases the low-pass cutoff frequency $f_c = f_{c,\min} + \beta |\dot{x}|$ during fast saccades (eliminating lag) while heavily smoothing slow fixation jitter.[m
+[32m+[m[32m- **Zero-Effort Page Micro-Drift Lock**: Pulses a $350\text{ ms}$ visual anchor on the first word of each new page, applying a bounded EWMA offset correction ($\le 55\text{ px}$) to cancel out slow postural slouching between pages.[m
+[32m+[m[32m- **Soft Gaussian Line & Paragraph Mapping**: Each fixation or gaze sample $(x, y, \Delta t)$ within the text column distributes its time $\Delta t$ across lines $i = 1\dots M$ with Gaussian weights scaled by the user's measured vertical validation error $\sigma_y$:[m
+[32m+[m[32m  $$w_i(y) = \frac{\exp\!\left(-\frac{(y - y_{c,i})^2}{2\sigma_y^2}\right)}{\sum_{j=1}^M \exp\!\left(-\frac{(y - y_{c,j})^2}{2\sigma_y^2}\right)}$$[m
+[32m+[m
+[32m+[m[32m---[m
+[32m+[m
+[32m+[m[32m## 📖 Plain-English Glossary of Every Technical Term[m
+[32m+[m
+[32m+[m[32mWe designed the UI so **normal users see clear, everyday English**, while researchers can still inspect the underlying mathematical metrics:[m
+[32m+[m
+[32m+[m[32m| Technical Term in Code/Logs | Plain-English UI Label | What It Actually Means |[m
+[32m+[m[32m| :--- | :--- | :--- |[m
+[32m+[m[32m| **$\sigma_{\text{px}}$ (`sigma_px`)** | **Tracking Accuracy** | Your overall gaze error radius in screen pixels, measured on 5 test dots *after* calibration. Lower is better ($\sim 40\text{–}75\text{ px}$ is typical on a laptop webcam). |[m
+[32m+[m[32m| **$\sigma_y$ (`rms_y`)** | **Vertical Error vs. Line Height** | How much your predicted gaze bounces up and down vertically. Because reading lines are stacked vertically, $\sigma_y$ determines whether the camera can tell lines apart. |[m
+[32m+[m[32m| **`granularity` (`line` vs `paragraph`)** | **Webcam Tracking Clarity** | **Line-by-Line** if $\sigma_y \le \frac{1}{2}\text{Line Height}$ ($33\text{ px}$); otherwise **Paragraph Clarity** (so the app never lies about line accuracy when noise is too high). |[m
+[32m+[m[32m| **`loo_rms_px` (LOO RMS)** | **Calibration Fit Quality** | Leave-One-Out cross-validation error during calibration: predicts each calibration dot from the *other* dots to verify you didn't blink or look away. |[m
+[32m+[m[32m| **One-Euro Filter** | **Adaptive Gaze Smoothing** | A speed-aware filter that keeps the gaze spotlight rock-steady when you stare at a word, but snaps instantly when your eyes jump to a new line. |[m
+[32m+[m[32m| **I-DT Fixation** | **Eye Pause / Fixation** | When your eyes lock onto a small region for $\ge 100\text{ ms}$. Reading is a sequence of fixations (where comprehension happens) separated by fast jumps (*saccades*). |[m
+[32m+[m[32m| **Regression** | **Backtracking (Re-read)** | When your eyes jump *backward* to an earlier part of the same line or an earlier line in the paragraph because a sentence was dense or confusing. |[m
+[32m+[m[32m| **Return Sweep** | **Line-to-Line Sweep** | The diagonal eye movement from the right end of one line to the left start of the next line down. |[m
+[32m+[m[32m| **Soft Gaussian Mapping** | **Smooth Attention Glow** | Instead of assigning 100% of a noisy gaze point to whichever line is 1 pixel closer, it shares credit smoothly across nearby lines based on your camera's $\sigma_y$. |[m
+[32m+[m
+[32m+[m[32m---[m
+[32m+[m
+[32m+[m[32m## ✨ The 4-Stage Biometric & Reading Intelligence Experience[m
+[32m+[m
+[32m+[m[32m```mermaid[m
+[32m+[m[32mflowchart LR[m
+[32m+[m[32m    classDef s1 fill:#0f172a,stroke:#00f0ff,stroke-width:2px,color:#fff[m
+[32m+[m[32m    classDef s2 fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff[m
+[32m+[m[32m    classDef s3 fill:#451a03,stroke:#f59e0b,stroke-width:2px,color:#fff[m
+[32m+[m[32m    classDef s4 fill:#4c0519,stroke:#f43f5e,stroke-width:2px,color:#fff[m
+[32m+[m
+[32m+[m[32m    A["Stage 1: Pre-Flight Biometric HUD\nLive Camera + 478-Pt 3D Mesh\nHead Pose Radar & Blink Oscilloscope"]:::s1[m
+[32m+[m[32m    B["Stage 2: Interactive Calibration\nSpring-Physics SVG Reticles\nBlink-Paused Ring + Vector Error Map"]:::s2[m
+[32m+[m[32m    C["Stage 3: Editorial Reader\n350 ms Page Micro-Drift Lock\nLive Margin Bar + Look-Away Bookmark"]:::s3[m
+[32m+[m[32m    D["Stage 4: Reading Intelligence\nPlain-English Verdict + Smart Review\n1x/2x Replay + 2D Gaussian Heatmap"]:::s4[m
+[32m+[m
+[32m+[m[32m    A -- "Press Enter" --> B -- "Press Space" --> C -- "Finish & Analyze" --> D[m
+ ```[m
+ [m
+[31m-## Reproducing the results[m
+[32m+[m[32m1. **Stage 1 — Pre-Flight Biometric HUD**:[m
+[32m+[m[32m   - **Live Camera + 478-Point 3D Cyber-Mesh**: Mirrored in-memory camera preview overlaid with your live 3D facial wireframe and glowing emerald 5-point iris vectors.[m
+[32m+[m[32m   - **Readiness Gauges**: Live **Head Pose & Distance Radar** (highlighting the $50\text{–}70\text{ cm}$ sweet spot) and a dual-channel **Left/Right Eye-Openness Oscilloscope** showing blinks against the $0.15$ threshold.[m
+[32m+[m[32m   - **Passage & Mode Selector**: Choose built-in passages (`Alice Passage 1–3`, `Alice Excerpts`), paste any custom text, pick 9- or 16-point calibration, select feature vectors (`iris_pose`, `iris_pose_6dof`, `full`), and switch reader themes (`Warm Sepia`, `Cyber Dark`, `Crisp Light`).[m
+[32m+[m[32m2. **Stage 2 — Interactive Precision Calibration**:[m
+[32m+[m[32m   - **Spring-Physics Target Reticles**: Targets glide smoothly across the screen using critically damped spring physics rather than teleporting abruptly.[m
+[32m+[m[32m   - **Blink-Aware Sample Ring & Auto-Retry**: The progress ring pauses if you blink so blinks never corrupt calibration, and automatically re-presents any missed dot.[m

@@ -7,31 +7,36 @@ Preprocessing copies upstream: crop -> RGB -> resize 224x224 -> Resize(448) -> I
 (Upstream train.py and test.py both use Resize(448); Py-Feat's wrapper feeds 224 instead, we follow upstream.)
 Validity is decided by the caller (same gate as Method A).
 """
-import numpy as np
-import torch
-from torchvision import transforms
-
 import cv2
+import numpy as np
 
 from gazeread.features.head_pose import pose_from_matrix
 from gazeread.features.landmarks import Detection
-from gazeread.gaze.l2cs_model import load_l2cs
 from gazeread.types import FrameFeatures
 
 L2CS_NAMES = ("gaze_yaw", "gaze_pitch", "head_yaw", "head_pitch")
 L2CS_SETS = {"gaze": [0, 1], "gaze_pose": [0, 1, 2, 3]}
 BIN_DEG, ANGLE_OFFSET = 4.0, -180.0
 
-_TRANSFORM = transforms.Compose([
-    transforms.ToPILImage(),
-    transforms.Resize(448),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-])
+_TRANSFORM = None
 
 
-def decode_bins(logits: torch.Tensor) -> np.ndarray:
+def _get_transform():
+    global _TRANSFORM
+    if _TRANSFORM is None:
+        from torchvision import transforms
+        _TRANSFORM = transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.Resize(448),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+    return _TRANSFORM
+
+
+def decode_bins(logits) -> np.ndarray:
     """(n, 90) logits -> (n,) angles in degrees (softmax expectation over bin index)."""
+    import torch
     p = torch.softmax(logits, dim=1)
     idx = torch.arange(logits.shape[1], dtype=p.dtype, device=p.device)
     return ((p * idx).sum(dim=1) * BIN_DEG + ANGLE_OFFSET).cpu().numpy()
@@ -46,30 +51,37 @@ def face_crop_box(lms_px: np.ndarray, scale: float, frame_shape) -> tuple[int, i
     return (int(max(0, cx - half)), int(max(0, cy - half)), int(min(w, cx + half)), int(min(h, cy + half)))
 
 
-def preprocess(frame_bgr: np.ndarray, box) -> torch.Tensor:
+def preprocess(frame_bgr: np.ndarray, box):
     x0, y0, x1, y1 = box
     face = cv2.resize(cv2.cvtColor(frame_bgr[y0:y1, x0:x1], cv2.COLOR_BGR2RGB), (224, 224))
-    return _TRANSFORM(face).unsqueeze(0)
+    return _get_transform()(face).unsqueeze(0)
 
 
-def pick_device(pref: str = "auto") -> torch.device:
+def pick_device(pref: str = "auto"):
+    import torch
     if pref == "auto":
-        return torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+        if torch.cuda.is_available():
+            return torch.device("cuda")
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return torch.device("mps")
+        return torch.device("cpu")
     return torch.device(pref)
 
 
 class L2CSBackend:
     def __init__(self, weights: str, crop_scale: float = 1.2, device: str = "auto"):
+        from gazeread.gaze.l2cs_model import load_l2cs
         self.device = pick_device(device)
         self.model = load_l2cs(weights, self.device)
         self.crop_scale = crop_scale
 
-    @torch.inference_mode()
     def gaze_angles(self, frame_bgr: np.ndarray, lms_px: np.ndarray) -> tuple[float, float]:
         """(yaw, pitch) in degrees for the face around `lms_px`."""
-        x = preprocess(frame_bgr, face_crop_box(lms_px, self.crop_scale, frame_bgr.shape)).to(self.device)
-        yaw_logits, pitch_logits = self.model(x)
-        return float(decode_bins(yaw_logits)[0]), float(decode_bins(pitch_logits)[0])
+        import torch
+        with torch.inference_mode():
+            x = preprocess(frame_bgr, face_crop_box(lms_px, self.crop_scale, frame_bgr.shape)).to(self.device)
+            yaw_logits, pitch_logits = self.model(x)
+            return float(decode_bins(yaw_logits)[0]), float(decode_bins(pitch_logits)[0])
 
     def from_detection(self, frame_bgr: np.ndarray, det: Detection | None, valid: bool, t: float) -> FrameFeatures:
         if det is None:

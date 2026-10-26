@@ -18,20 +18,27 @@ import numpy as np
 
 from gazeread.features.head_pose import pose_from_matrix
 from gazeread.features.landmarks import (
-    EYES, LEFT_IRIS_CENTER, RIGHT_IRIS_CENTER, Detection, LandmarkDetector, eye_openness, is_valid,
+    EYES, LEFT_IRIS_CENTER, RIGHT_IRIS_CENTER, Detection, LandmarkDetector,
+    eye_openness, iris_center_5pt, is_valid,
 )
 from gazeread.types import FrameFeatures
 
 FEATURE_NAMES = ("uR", "vR", "uL", "vL", "openR", "openL",
                  "yaw", "pitch", "roll", "tx", "ty", "tz")
 # Column subsets used by the calibration map (configs: calib.features).
-FEATURE_SETS = {"iris": [0, 1, 2, 3], "iris_pose": [0, 1, 2, 3, 6, 7],
-                "iris_open": [0, 1, 2, 3, 4, 5]}   # openness: lids drop when looking down
+FEATURE_SETS = {
+    "iris": [0, 1, 2, 3],
+    "iris_pose": [0, 1, 2, 3, 6, 7],
+    "iris_open": [0, 1, 2, 3, 4, 5],   # openness: lids drop when looking down
+    "iris_pose_6dof": [0, 1, 2, 3, 6, 7, 8, 9, 10, 11],
+    "full": list(range(12)),
+}
 IRIS_CENTERS = {"right": RIGHT_IRIS_CENTER, "left": LEFT_IRIS_CENTER}
 
 
 def iris_uv(lms_px: np.ndarray, eye: str) -> tuple[float, float]:
-    """Iris offset (u, v) in eye widths for `eye` ("right"/"left"), from landmarks in image px."""
+    """Iris offset (u, v) in eye widths for `eye` ("right"/"left"), from landmarks in image px.
+    Uses 5-point iris contour centroid when ring points are present, else center landmark."""
     outer, inner, _, _ = EYES[eye]
     o, i = lms_px[outer, :2], lms_px[inner, :2]
     width = float(np.linalg.norm(o - i))
@@ -41,7 +48,8 @@ def iris_uv(lms_px: np.ndarray, eye: str) -> tuple[float, float]:
     perp = np.array([-axis[1], axis[0]])
     if perp[1] < 0:
         perp = -perp
-    d = lms_px[IRIS_CENTERS[eye], :2] - (o + i) / 2
+    center_xy = iris_center_5pt(lms_px, eye)
+    d = center_xy - (o + i) / 2
     return float(d @ axis / width), float(d @ perp / width)
 
 
