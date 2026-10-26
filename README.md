@@ -1,6 +1,6 @@
 <div align="center">
 
-# 👁️ GazeRead: Uncertainty-Aware Webcam Gaze Tracking & Cognitive Reading Analytics
+#  GazeRead: Uncertainty-Aware Webcam Gaze Tracking & Cognitive Reading Analytics
 
 **Turning an ordinary consumer laptop webcam into an honest, mathematically rigorous biometric reading & attention instrument.**
 
@@ -13,20 +13,20 @@
 
 <br/>
 
-[**🚀 Quick Start**](#-quick-start-windows--macos--linux) ·
-[**🎯 Why This Project Exists**](#-the-core-research-problem-why-this-project-exists) ·
-[**🏗️ System Architecture**](#️-system-architecture--data-flow) ·
-[**🧠 CV & Math Deep-Dive**](#-computer-vision--mathematical-pipeline) ·
-[**📖 Plain-English Glossary**](#-plain-english-glossary-of-every-technical-term) ·
-[**✨ 4-Stage UI Walkthrough**](#-the-4-stage-biometric--reading-intelligence-experience) ·
-[**🌍 Real-World Applications**](#-real-world-applications--use-cases) ·
-[**📊 Benchmarks & Evaluation**](#-reproducing-the-scientific-benchmarks)
+[** Quick Start**](#-quick-start-windows--macos--linux) ·
+[** Why This Project Exists**](#-the-core-research-problem-why-this-project-exists) ·
+[** System Architecture**](#️-system-architecture--data-flow) ·
+[** CV & Math Deep-Dive**](#-computer-vision--mathematical-pipeline) ·
+[** Plain-English Glossary**](#-plain-english-glossary-of-every-technical-term) ·
+[** 4-Stage UI Walkthrough**](#-the-4-stage-biometric--reading-intelligence-experience) ·
+[** Real-World Applications**](#-real-world-applications--use-cases) ·
+[** Benchmarks & Evaluation**](#-reproducing-the-scientific-benchmarks)
 
 </div>
 
 ---
 
-## 🎯 The Core Research Problem: Why This Project Exists
+##  The Core Research Problem: Why This Project Exists
 
 Dedicated infrared hardware eye trackers (such as **Tobii Pro Spectrum** or **EyeLink 1000**) cost **$5,000–$25,000+**, use active near-infrared corneal reflection illuminators at 250–1000 Hz, and achieve **$\sim 0.5^\circ$ of visual angle accuracy** (enough to resolve individual words).
 
@@ -35,7 +35,7 @@ By contrast, **every laptop already has a standard 30 FPS RGB webcam**—but con
 2. **Head-Pose Coupling**: A tiny $1^\circ$ head tilt or a $1\text{ cm}$ slouch shifts the eye appearance in the camera frame far more than a reading saccade across a sentence.
 3. **The Problem with Existing Webcam Gaze Demos**: Almost all webcam eye-tracking demos display a jittery red dot and falsely claim word-level precision, without ever measuring or accounting for the webcam's actual error radius ($\sim 2^\circ\text{–}3^\circ$, or **$35\text{–}75\text{ px}$** on screen).
 
-### 💡 How GazeRead Solves This Differently
+###  How GazeRead Solves This Differently
 
 Instead of faking word-level accuracy, **GazeRead is an uncertainty-aware biometric instrument**:
 - **Self-Quantified Uncertainty ($\sigma_x, \sigma_y$)**: Every session ends calibration with **5 held-out validation targets** (that were never used to fit the regression model) to measure your exact horizontal ($\sigma_x$) and vertical ($\sigma_y$) RMS error in screen pixels.
@@ -46,7 +46,7 @@ Instead of faking word-level accuracy, **GazeRead is an uncertainty-aware biomet
 
 ---
 
-## 🏗️ System Architecture & Data Flow
+##  System Architecture & Data Flow
 
 ```mermaid
 flowchart TD
@@ -56,29 +56,29 @@ flowchart TD
     classDef ui fill:#451a03,stroke:#f59e0b,stroke-width:2px,color:#fffbeb
     classDef out fill:#4c0519,stroke:#f43f5e,stroke-width:2px,color:#fff1f2
 
-    subgraph S1["🎥 1. Cross-Platform Capture & Feature Extraction (30 FPS)"]
+    subgraph S1[" 1. Cross-Platform Capture & Feature Extraction (30 FPS)"]
         CAM["Webcam Stream (640x480 @ 30 FPS)\nWindows DSHOW/MSMF · macOS AVF · Linux V4L2"]:::cam
         MP["MediaPipe FaceLandmarker (VIDEO Mode)\n478 3D Landmarks + 4x4 Pose Matrix"]:::cv
         M_A["Method A: 12-D Biometric Vector\n5-Pt Iris (uR,vR,uL,vL) + Openness + 6-DoF Pose"]:::cv
         M_B["Method B: L2CS-Net (ResNet-50 Gaze360)\n90-Bin Softmax Gaze (Yaw, Pitch) + Head Pose"]:::cv
     end
 
-    subgraph S2["🎯 2. Per-User Calibration & Signal Filtering"]
+    subgraph S2[" 2. Per-User Calibration & Signal Filtering"]
         CAL["9 or 16 Shuffled Fit Targets\nBlink-Aware Sample Window + Auto Dot Retry"]:::math
         LOO["Closed-Form Leave-One-Out (LOO) Ridge Map\nAffine (Deg 1) vs Quadratic (Deg 2) via Hat Matrix"]:::math
         VAL["5 Held-Out Validation Targets\nMeasures True Screen Error (sigma_px, sigma_x, sigma_y)"]:::math
         FILT["One-Euro 2D Adaptive Low-Pass Filter\n+ 350 ms Page-Start Micro-Drift Lock"]:::math
     end
 
-    subgraph S3["📖 3. Uncertainty-Aware Reading Analysis Engine"]
+    subgraph S3[" 3. Uncertainty-Aware Reading Analysis Engine"]
         IDT["I-DT Dispersion Fixation Detector\nThreshold = 1.25 * sigma_px + Return-Sweep / Regression Tracker"]:::ui
         GRAN{"Granularity Gate\nsigma_y <= 0.5 * Line Pitch?"}:::ui
         LINE["Line-by-Line Precision Mode\nGaussian Soft Line Weights (sigma = sigma_y)"]:::ui
         PARA["Paragraph-Level Precision Mode\nAggregated Paragraph Dwell & Engagement"]:::ui
     end
 
-    subgraph S4["📊 4. Interactive Reading Intelligence Dashboard"]
-        DASH["Plain-English Verdict & Smart Review Helper\n✅ Read Carefully · 🔄 Re-read/Tricky · ⚡ Skimmed · ⏭️ Skipped"]:::out
+    subgraph S4[" 4. Interactive Reading Intelligence Dashboard"]
+        DASH["Plain-English Verdict & Smart Review Helper\n Read Carefully ·  Re-read/Tricky ·  Skimmed ·  Skipped"]:::out
         VIZ["Interactive report\n1x/2x gaze replay · attention maps · paragraph charts · timeline · export"]:::out
     end
 
@@ -96,7 +96,7 @@ flowchart TD
 
 ---
 
-## 🧠 Computer Vision & Mathematical Pipeline
+##  Computer Vision & Mathematical Pipeline
 
 ### 1. MediaPipe 478-Point 3D Mesh & 5-Point Iris Geometry
 Implemented in [`src/gazeread/features/landmarks.py`](src/gazeread/features/landmarks.py) and [`src/gazeread/gaze/backend_landmark.py`](src/gazeread/gaze/backend_landmark.py):
@@ -156,7 +156,7 @@ We designed the UI so **normal users see clear, everyday English**, while resear
 
 ---
 
-## ✨ The 4-Stage Biometric & Reading Intelligence Experience
+##  The 4-Stage Biometric & Reading Intelligence Experience
 
 ```mermaid
 flowchart LR
@@ -186,30 +186,30 @@ flowchart LR
    - **Live Paragraph Margin Bar**: A soft cyan bar in the left margin smoothly highlights whichever paragraph your eyes are currently reading.
    - **Auto-Resume Gaze Bookmark**: Look away from the screen for $\ge 2.5\text{ s}$ and look back—the exact line where you left off softly glows to guide your eyes back.
 4. **Stage 4 — Plain-English Reading Intelligence Dashboard**:
-   - **Plain-English Verdict Banner**: Summarizes how many paragraphs you read carefully (`✅ Read Carefully`), struggled with (`🔄 Re-read / Tricky`), skimmed (`⚡ Skimmed Quickly`), or skipped (`⏭️ Skipped Over`), alongside realistic **Reading Pace (WPM)** and **Focus Score**.
-   - **🎯 Smart Study & Review Helper**: Automatically pulls out the full text of any paragraph you skipped, skimmed, or found tricky so you can review your exact blind spots.
+   - **Plain-English Verdict Banner**: Summarizes how many paragraphs you read carefully (` Read Carefully`), struggled with (`Re-read / Tricky`), skimmed (` Skimmed Quickly`), or skipped (` Skipped Over`), alongside realistic **Reading Pace (WPM)** and **Focus Score**.
+   - ** Smart Study & Review Helper**: Automatically pulls out the full text of any paragraph you skipped, skimmed, or found tricky so you can review your exact blind spots.
    - **Interactive report views**: **1× / 2× Animated Gaze Replay ("Watch Your Eyes Read")**, **Smooth 2D Gaussian Attention Heatmap**, paragraph/line heatmaps, attention-by-paragraph bars, reading-mode distribution, second-by-second journey timeline, and **1-Click HTML/JSON/PNG Report Export**.
 
 ---
 
-## 🌍 Real-World Applications & Use Cases
+##  Real-World Applications & Use Cases
 
 Why does uncertainty-aware paragraph-level webcam tracking matter in practice?
 
-1. **🎓 EdTech & Adaptive Study Assistants**:
+1. ** EdTech & Adaptive Study Assistants**:
    - Detects when a student zones out, skims over a section, or repeatedly backtracks on a difficult paragraph—automatically surfacing explanations or review flashcards for those exact paragraphs without manual prompting.
-2. **🧪 Remote UX, Copywriting & Document Design Testing**:
+2. ** Remote UX, Copywriting & Document Design Testing**:
    - Lets product teams, writers, and researchers test where readers actually spend time vs. what they ignore in landing pages, articles, resumes, or documentation across any laptop webcam—without bringing participants into a $10,000 hardware eye-tracking lab.
-3. **🧠 Cognitive & Clinical Reading Screening Research**:
+3. ** Cognitive & Clinical Reading Screening Research**:
    - Reading cadence, fixation stability, return-sweep accuracy, and regression frequency are key digital biomarkers studied in reading difficulties, visual fatigue, and attention research.
-4. **📜 High-Stakes Compliance & Proof-of-Reading**:
+4. ** High-Stakes Compliance & Proof-of-Reading**:
    - Verifies whether critical safety bulletins, medical consent forms, or legal disclosures were genuinely read paragraph-by-paragraph rather than blindly scrolled past.
-5. **🤖 Human-AI Attention Alignment**:
+5. ** Human-AI Attention Alignment**:
    - Capturing real human reading dwell shares over text passages provides natural human attention distributions to compare against LLM token/paragraph importance weights.
 
 ---
 
-## 🚀 Quick Start (Windows · macOS · Linux)
+##  Quick Start (Windows · macOS · Linux)
 
 ### 1. Run the Live Biometric App
 
@@ -257,7 +257,7 @@ $env:PYTHONPATH="src"; python -m gazeread.app.server --compare --open
 
 ---
 
-## 📊 Reproducing the Scientific Benchmarks
+##  Reproducing the Scientific Benchmarks
 
 All experimental pipelines are deterministic and seeded:
 
