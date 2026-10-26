@@ -1,8 +1,8 @@
 key,value
-n_included,10
+n_included,15
 n_excluded,2
-rms_y_A_median,186.05
-rms_y_A_best,129.5
+rms_y_A_median,164.6
+rms_y_A_best,118.6
 rms_y_B_median,187.7
-x_over_y,0.689
-systematic_frac,0.797
+x_over_y,0.727
+systematic_frac,0.813
