@@ -37,7 +37,6 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 
 from gazeread.analysis.heatmap import analyze_session, export
-from gazeread.app.quiz import load_questions, public_questions, score
 from gazeread.app.session import SessionLog, read_events
 from gazeread.features.landmarks import extract_hud_mesh, synthetic_hud_mesh
 from gazeread.gaze.backend_landmark import FEATURE_NAMES, FEATURE_SETS, LandmarkBackend
@@ -102,15 +101,12 @@ def list_passages(texts_dir: Path) -> list[dict]:
         raw = p.read_text(encoding="utf-8").strip()
         paras = [ blk.strip() for blk in raw.split("\n\n") if blk.strip() ]
         words = sum(len(blk.split()) for blk in paras)
-        qs = load_questions(texts_dir, name)
-        q_count = len(qs) if qs else (4 if name == "alice_excerpts" else 0)
         title = name.replace("_", " ").title()
         out.append({
             "id": name,
             "title": title,
             "para_count": len(paras),
             "word_count": words,
-            "quiz_count": q_count,
         })
     return out
 
@@ -571,30 +567,6 @@ async def apply_micro_drift_lock(p: Pipeline, anchor_x: float, anchor_y: float, 
         })
 
 
-def ensure_questions(texts_dir: Path, name: str, custom_text: str | None = None) -> list[dict]:
-    """Load passage questions from JSON, or generate comprehension questions if none exist on disk."""
-    if not custom_text:
-        qs = load_questions(texts_dir, name)
-        if qs:
-            return qs
-    raw = custom_text or (texts_dir / f"{name}.txt").read_text(encoding="utf-8")
-    paras = [blk.replace("\n", " ").strip() for blk in raw.split("\n\n") if blk.strip()]
-    out = []
-    for idx, p in enumerate(paras[:4]):
-        words = [w.strip(".,!?;:\"'()[]") for w in p.split() if len(w.strip(".,!?;:\"'()[]")) >= 5]
-        target = words[len(words) // 2] if words else "detail"
-        distractors = ["unrelated concept", "opposite outcome", "secondary footnote"]
-        opts = [target, *distractors]
-        out.append({
-            "id": f"custom_q{idx}",
-            "para_id": idx,
-            "text": f"In Paragraph {idx + 1}, which key term or detail appeared in the text?",
-            "options": opts,
-            "answer": 0,
-        })
-    return out
-
-
 def create_app(p: Pipeline, cfg_hash: str) -> FastAPI:
     app = FastAPI()
 
@@ -612,7 +584,6 @@ def create_app(p: Pipeline, cfg_hash: str) -> FastAPI:
                 await ws.send_json(msg)
 
         send_task, calib_task, drift_task = asyncio.create_task(sender()), None, None
-        questions = ensure_questions(STATIC / "texts", p.cfg["reading"]["text"], p.cfg["reading"].get("custom_text"))
         passages = list_passages(STATIC / "texts")
         await q.put({
             "type": "config",
@@ -620,7 +591,6 @@ def create_app(p: Pipeline, cfg_hash: str) -> FastAPI:
             "calib": {"n_points": p.cfg["calib"]["n_points"], "features": p.cfg["calib"]["features"]},
             "source": p.source,
             "session": p.session.id,
-            "questions": public_questions(questions),
             "passages": passages,
         })
         try:
@@ -635,7 +605,6 @@ def create_app(p: Pipeline, cfg_hash: str) -> FastAPI:
                         p.cfg["reading"]["custom_text"] = str(msg["custom_text"])
                     elif "text" in msg:
                         p.cfg["reading"].pop("custom_text", None)
-                    questions = ensure_questions(STATIC / "texts", p.cfg["reading"]["text"], p.cfg["reading"].get("custom_text"))
                     if "show_cursor" in msg:
                         p.cfg["reading"]["show_cursor"] = bool(msg["show_cursor"])
                     if "skim" in msg:
@@ -653,7 +622,6 @@ def create_app(p: Pipeline, cfg_hash: str) -> FastAPI:
                         "calib": {"n_points": p.cfg["calib"]["n_points"], "features": p.cfg["calib"]["features"]},
                         "source": p.source,
                         "session": p.session.id,
-                        "questions": public_questions(questions),
                         "passages": passages,
                     })
                 elif mtype == "page":          # page shown now; Python stamps the time
@@ -667,11 +635,6 @@ def create_app(p: Pipeline, cfg_hash: str) -> FastAPI:
                         if drift_task:
                             drift_task.cancel()
                         drift_task = asyncio.create_task(apply_micro_drift_lock(p, ax, ay, 0.35))
-                elif mtype == "answer":        # scored here; the page has no answer key
-                    para_id, correct = score(questions, msg["question_id"], msg["response"])
-                    p.session.write("answer", t=time.monotonic(), passage=p.cfg["reading"]["text"],
-                                    question_id=msg["question_id"], para_id=para_id,
-                                    response=int(msg["response"]), correct=correct)
                 elif mtype == "reading_end":
                     t_end = time.monotonic()
                     p.session.write("reading_end", t=t_end)

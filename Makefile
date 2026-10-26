@@ -60,6 +60,6 @@ eval-lopo: extract-mpii
 
 results: sim eval-lopo
 
-# Human check (spec 7.4, single reader): tables from sessions that contain quiz answers
+# Human check (spec 7.4, single reader): re-analyses sessions recorded while the app still had its quiz
 human-check:
 	PYTHONPATH=src $(PY) -m gazeread.eval.human_check $(SESSIONS)

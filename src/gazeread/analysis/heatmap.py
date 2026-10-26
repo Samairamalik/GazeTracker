@@ -126,7 +126,6 @@ def analyze_session(events: list[dict], cfg: dict) -> dict:
     first = next(i for i, e in enumerate(events) if e is reading[0])
     meta = [e for e in events[:first] if e["type"] == "meta"][-1]       # in force when the reading began
     gaze = [e for e in events if e["type"] == "gaze" and t_start <= e["t"] <= t_end]
-    answers = [e for e in events if e["type"] == "answer" and e.get("t", 0.0) >= t_start]
     gt = np.array([g["t"] for g in gaze], float) if gaze else np.zeros(0, float)
     gx = np.array([np.nan if g["x"] is None else g["x"] for g in gaze], float) if gaze else np.zeros(0, float)
     gy = np.array([np.nan if g["y"] is None else g["y"] for g in gaze], float) if gaze else np.zeros(0, float)
@@ -225,9 +224,6 @@ def analyze_session(events: list[dict], cfg: dict) -> dict:
             # Use max of sample dwell and fixation dwell so inter-word saccades aren't lost
             read_s = max(float(samp_map.get(pid, ps)), float(ps))
             eval_info = _evaluate_paragraph(read_s, words, fc, regs)
-            p_ans = [a for a in answers if a.get("para_id") == pid]
-            q_corr = sum(1 for a in p_ans if a.get("correct")) if p_ans else None
-            q_tot = len(p_ans)
             pm = {
                 "para_id": int(pid),
                 "page": int(pe["page"]),
@@ -244,8 +240,6 @@ def analyze_session(events: list[dict], cfg: dict) -> dict:
                 "friendly_status": eval_info["friendly_status"],
                 "insight": eval_info["insight"],
                 "text": full_text,
-                "quiz_correct": q_corr,
-                "quiz_total": q_tot,
             }
             para_metrics.append(pm)
             if pid not in para_agg:
@@ -346,8 +340,6 @@ def analyze_session(events: list[dict], cfg: dict) -> dict:
         "regression_rate": _r(reg_rate),
         "valid_gaze_ratio": _r(valid_ratio),
         "focus_score": _r(focus_score),
-        "quiz_correct": sum(1 for a in answers if a.get("correct")),
-        "quiz_total": len(answers),
         "verdict_headline": verdict_headline,
         "counts": {"deep": n_deep, "tricky": n_tricky, "skimmed": n_skim, "skipped": n_skip},
         "paragraphs": summary_paras,

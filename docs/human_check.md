@@ -1,5 +1,7 @@
 # Human check protocol (spec 7.4): single reader, illustrative only
 
+> **Note:** the comprehension quiz used for this check has since been removed from the app. This page documents how the check was run; `make human-check` still re-analyses the sessions recorded at the time (results in `results/m6_summary.md`).
+
 **Purpose.** See whether, for one reader, the paragraph-level attention heatmap and comprehension
 answers point the same way: paragraphs that got little gaze time should be the ones whose
 questions were missed, and a deliberately skimmed passage should show less dwell and more

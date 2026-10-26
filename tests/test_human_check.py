@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 import yaml
 
-from gazeread.app.quiz import load_questions, public_questions, score
 from gazeread.app.session import SessionLog, read_events
 from gazeread.eval.human_check import session_tables
 
@@ -13,28 +12,7 @@ TEXTS = Path("src/gazeread/app/static/texts")
 PITCH = 66.0
 
 
-def test_passage_files_and_questions_consistent():
-    for n in (1, 2, 3):
-        paras = (TEXTS / f"alice_passage{n}.txt").read_text(encoding="utf-8").strip().split("\n\n")
-        qs = load_questions(TEXTS, f"alice_passage{n}")
-        assert 3 <= len(paras) and 4 <= len(qs) <= 5
-        assert 150 <= sum(len(p.split()) for p in paras) <= 300
-        for q in qs:
-            assert 0 <= q["para_id"] < len(paras) and len(q["options"]) == 4 and 0 <= q["answer"] < 4
-        assert len({q["id"] for q in qs}) == len(qs)
 
-
-def test_page_never_receives_answer_key():
-    qs = load_questions(TEXTS, "alice_passage1")
-    assert all(set(q) == {"id", "text", "options"} for q in public_questions(qs))   # no key, no evidence
-    assert load_questions(TEXTS, "no_such_passage") == []          # passages without questions
-
-
-def test_score():
-    qs = [{"id": "x", "para_id": 2, "text": "?", "options": ["a", "b", "c", "d"], "answer": 3}]
-    assert score(qs, "x", 3) == (2, True) and score(qs, "x", 0) == (2, False)
-    with pytest.raises(StopIteration):
-        score(qs, "nope", 0)
 
 
 def test_session_join(tmp_path):
@@ -74,26 +52,3 @@ def test_page_shown_too_briefly_is_flagged(tmp_path):
     _, rows = session_tables(read_events(tmp_path / "k" / "events.jsonl"), CFG, "k")
     by = {r["para_id"]: r for r in rows}
     assert by[0]["page_not_shown"] == 1 and by[1]["page_not_shown"] == 0
-
-
-def test_every_question_is_answerable_from_its_own_paragraph():
-    """Each question's evidence phrase is in its paragraph and in no other, in every question file."""
-    files = sorted(TEXTS.glob("*.questions.json"))
-    assert {f.name.split(".")[0] for f in files} >= {"alice_excerpts", "alice_passage1", "alice_passage2", "alice_passage3"}
-    for f in files:
-        name = f.name.split(".")[0]
-        paras = (TEXTS / f"{name}.txt").read_text(encoding="utf-8").strip().split("\n\n")
-        qs = load_questions(TEXTS, name)
-        assert len({q["id"] for q in qs}) == len(qs)
-        for q in qs:
-            ev = q["evidence"]
-            assert 0 <= q["para_id"] < len(paras) and 0 <= q["answer"] < len(q["options"]), (name, q["id"])
-            assert ev in paras[q["para_id"]], (name, q["id"], "evidence not in its paragraph")
-            assert not [i for i, para in enumerate(paras) if ev in para and i != q["para_id"]], (name, q["id"])
-
-
-def test_default_text_uses_its_question_file():
-    from gazeread.app.server import ensure_questions
-    qs = ensure_questions(TEXTS, "alice_excerpts")
-    assert [q["id"] for q in qs] == ["ae1", "ae2", "ae3", "ae4", "ae5", "ae6"]
-    assert sorted(q["para_id"] for q in qs) == list(range(6))     # one question per paragraph

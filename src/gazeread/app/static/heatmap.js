@@ -541,11 +541,11 @@ const Heatmap = {
     const sum = r.summary || {
       reading_duration_s: 0, overall_wpm: 0, total_words: 0, est_words_read: 0,
       focus_score: 0, valid_gaze_ratio: 0, regression_rate: 0,
-      total_regressions: 0, quiz_correct: 0, quiz_total: 0, paragraphs: [],
+      total_regressions: 0, paragraphs: [],
     };
 
     const reviewParas = (sum.paragraphs || []).filter(
-      (p) => p.status !== "Deep Read" || (p.quiz_total > 0 && p.quiz_correct < p.quiz_total)
+      (p) => p.status !== "Deep Read"
     );
 
     const wrap = document.createElement("div");

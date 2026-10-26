@@ -68,4 +68,4 @@ def test_6dof_feature_sets_and_passages_list():
     assert len(FEATURE_SETS["full"]) == len(FEATURE_NAMES)
     passages = list_passages(Path(STATIC) / "texts")
     assert len(passages) >= 4
-    assert any(p["id"] == "alice_passage1" and p["quiz_count"] > 0 for p in passages)
+    assert any(p["id"] == "alice_passage1" for p in passages)

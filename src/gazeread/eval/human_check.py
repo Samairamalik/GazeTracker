@@ -130,7 +130,8 @@ def main() -> None:
     cfg = yaml.safe_load((ROOT / "configs/default.yaml").read_text())["analysis"]
     sessions = [Path(a) for a in sys.argv[1:]] or find_sessions(ROOT)
     if not sessions:
-        sys.exit("No sessions with quiz answers found (run `make app TEXT=alice_passage1` and answer the questions).")
+        sys.exit("No sessions with quiz answers found. The quiz was removed from the app; this analyses "
+                 "sessions recorded while it existed (results/m6_summary.md).")
     passages, paras = [], []
     for s in sessions:
         p, rows = session_tables(read_events(s / "events.jsonl"), cfg, s.name)

@@ -271,7 +271,8 @@ $env:PYTHONPATH="src"; python -m gazeread.eval.sim_experiments
 # Offline deterministic session replay verification:
 $env:PYTHONPATH="src"; python scripts/replay_session.py sessions/<session_id> --check
 
-# M6: Human check tables (correlating paragraph dwell share vs. comprehension quiz accuracy):
+# M6: Human check tables (re-analyses sessions recorded while the app still had its comprehension quiz;
+# the quiz has since been removed from the app):
 $env:PYTHONPATH="src"; python -m gazeread.eval.human_check
 ```
 
