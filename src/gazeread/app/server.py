@@ -577,17 +577,6 @@ def ensure_questions(texts_dir: Path, name: str, custom_text: str | None = None)
         qs = load_questions(texts_dir, name)
         if qs:
             return qs
-        if name == "alice_excerpts":
-            return [
-                {"id": "ae1", "para_id": 0, "text": "Why did Alice think the book her sister was reading had no use?",
-                 "options": ["It was written in French", "It had no pictures or conversations", "The print was too small", "The pages were torn"], "answer": 1},
-                {"id": "ae2", "para_id": 1, "text": "What did the White Rabbit take out of its waistcoat-pocket?",
-                 "options": ["A golden key", "A pocket watch", "A pair of gloves", "A fan"], "answer": 1},
-                {"id": "ae3", "para_id": 3, "text": "What was on the jar Alice took down from the shelf as she fell?",
-                 "options": ["STRAWBERRY JAM", "ORANGE MARMALADE", "DRINK ME", "EAT ME"], "answer": 1},
-                {"id": "ae4", "para_id": 5, "text": "Why couldn't Alice get through the little door into the garden?",
-                 "options": ["The door remained locked", "Even her head would not go through the doorway", "The hall was flooded", "The Rabbit blocked the way"], "answer": 1},
-            ]
     raw = custom_text or (texts_dir / f"{name}.txt").read_text(encoding="utf-8")
     paras = [blk.replace("\n", " ").strip() for blk in raw.split("\n\n") if blk.strip()]
     out = []

@@ -11,7 +11,8 @@
     "Maps of the garden",
     "Everything that begins with a T"
    ],
-   "answer": 1
+   "answer": 1,
+   "evidence": "everything that begins with an M"
   },
   {
    "id": "p3q2",
@@ -23,7 +24,8 @@
     "The Hatter pinched it",
     "A clock struck"
    ],
-   "answer": 2
+   "answer": 2,
+   "evidence": "pinched by the Hatter"
   },
   {
    "id": "p3q3",
@@ -35,7 +37,8 @@
     "mouse-trap",
     "muchness"
    ],
-   "answer": 3
+   "answer": 3,
+   "evidence": "a drawing of a muchness"
   },
   {
    "id": "p3q4",
@@ -47,7 +50,8 @@
     "Pouring more tea",
     "Singing a song"
    ],
-   "answer": 0
+   "answer": 0,
+   "evidence": "put the Dormouse into the teapot"
   }
  ]
 }

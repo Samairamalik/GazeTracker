@@ -11,7 +11,8 @@
     "A mushroom",
     "A teacup"
    ],
-   "answer": 1
+   "answer": 1,
+   "evidence": "took the hookah out of its mouth"
   },
   {
    "id": "p1q2",
@@ -23,7 +24,8 @@
     "The way back home",
     "How tall she was"
    ],
-   "answer": 0
+   "answer": 0,
+   "evidence": "who I was when I got up this morning"
   },
   {
    "id": "p1q3",
@@ -35,7 +37,8 @@
     "Because she was not herself",
     "The Caterpillar was too rude"
    ],
-   "answer": 2
+   "answer": 2,
+   "evidence": "because I’m not myself"
   },
   {
    "id": "p1q4",
@@ -47,7 +50,8 @@
     "A mushroom",
     "A chrysalis, and then a butterfly"
    ],
-   "answer": 3
+   "answer": 3,
+   "evidence": "into a chrysalis"
   }
  ]
 }

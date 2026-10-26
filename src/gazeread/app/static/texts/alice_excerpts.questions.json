@@ -1,0 +1,83 @@
+{
+ "passage": "alice_excerpts",
+ "questions": [
+  {
+   "id": "ae1",
+   "para_id": 0,
+   "text": "Why did Alice think the book her sister was reading had no use?",
+   "options": [
+    "It was written in French",
+    "It had no pictures or conversations",
+    "The print was too small",
+    "The pages were torn"
+   ],
+   "answer": 1,
+   "evidence": "it had no pictures or conversations in it"
+  },
+  {
+   "id": "ae2",
+   "para_id": 1,
+   "text": "What ran close by Alice while she was thinking about a daisy-chain?",
+   "options": [
+    "A White Rabbit with pink eyes",
+    "A black cat",
+    "A Dodo",
+    "A white mouse"
+   ],
+   "answer": 0,
+   "evidence": "a White Rabbit with pink eyes ran close by her"
+  },
+  {
+   "id": "ae3",
+   "para_id": 2,
+   "text": "After such a fall, what did Alice think she would think nothing of?",
+   "options": [
+    "Swimming in the sea",
+    "Tumbling down stairs",
+    "Climbing tall trees",
+    "Being alone at night"
+   ],
+   "answer": 1,
+   "evidence": "I shall think nothing of tumbling down stairs"
+  },
+  {
+   "id": "ae4",
+   "para_id": 3,
+   "text": "Why did Alice decide it was safe to taste the bottle?",
+   "options": [
+    "Her sister told her to",
+    "It smelled of roses",
+    "It was not marked “poison”",
+    "It was labelled EAT ME"
+   ],
+   "answer": 2,
+   "evidence": "this bottle was not marked “poison,”"
+  },
+  {
+   "id": "ae5",
+   "para_id": 4,
+   "text": "How deep was the pool of tears around Alice?",
+   "options": [
+    "Up to her knees",
+    "Two feet deep",
+    "Just a few drops",
+    "About four inches deep"
+   ],
+   "answer": 3,
+   "evidence": "about four inches deep"
+  },
+  {
+   "id": "ae6",
+   "para_id": 5,
+   "text": "What turned out to be splashing about in the pool?",
+   "options": [
+    "A walrus",
+    "A hippopotamus",
+    "A mouse",
+    "A duck"
+   ],
+   "answer": 2,
+   "evidence": "it was only a mouse"
+  }
+ ]
+}

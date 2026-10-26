@@ -11,7 +11,8 @@
     "Whistling",
     "Reading a book"
    ],
-   "answer": 1
+   "answer": 1,
+   "evidence": "nursing a baby"
   },
   {
    "id": "p2q2",
@@ -23,7 +24,8 @@
     "A pan of tarts",
     "A bowl of pepper"
    ],
-   "answer": 0
+   "answer": 0,
+   "evidence": "stirring a large cauldron"
   },
   {
    "id": "p2q3",
@@ -35,7 +37,8 @@
     "The cook and a large cat",
     "The Footman and the cook"
    ],
-   "answer": 2
+   "answer": 2,
+   "evidence": "did not sneeze, were the cook, and a large cat"
   },
   {
    "id": "p2q4",
@@ -47,7 +50,8 @@
     "A March cat",
     "A Cheshire cat"
    ],
-   "answer": 3
+   "answer": 3,
+   "evidence": "It’s a Cheshire cat"
   },
   {
    "id": "p2q5",
@@ -59,7 +63,8 @@
     "The cook",
     "The cat"
    ],
-   "answer": 0
+   "answer": 0,
+   "evidence": "addressed to the baby"
   }
  ]
 }
